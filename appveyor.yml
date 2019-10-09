@@ -1,0 +1,8 @@
+build: off
+
+clone_folder: c:\go\screw
+
+stack: go 1.13
+
+test_script:
+  - go test ./...
