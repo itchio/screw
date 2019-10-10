@@ -1,26 +1,44 @@
 # screw
 
+[![Build Status](https://travis-ci.org/itchio/screw.svg?branch=master)](https://travis-ci.org/itchio/screw)
+[![Build status](https://ci.appveyor.com/api/projects/status/8ewv7fb7myyb14r9?svg=true)](https://ci.appveyor.com/project/fasterthanlime/screw)
+
 Screw case-insensitive filesystems.
 
 Screw antivirus software locking files at random.
 
 Let's abstract over them.
 
-## Changes from 'os'
+## Semantics
 
-`screw` exposes a subset of `os`'s functions, with a few changes on Windows.
-On other platforms, it makes no changes.
+This table assumes `"apricot"` is passed to all those functions:
 
-On Windows:
+| Existing file name    | Operation          | `os` package           | `screw` package
+|-----------------------|--------------------|------------------------|-----------------------
+| (none)                | {S,Ls}tat          | ❌ os.ErrNotExist      | ❌ os.ErrNotExist
+| "APRICOT"             | {S,Ls}tat          | ✅ stat "apricot"      | ❌ screw.ErrWrongCase
+| "apricot"             | {S,Ls}tat          | ✅ stat "apricot"      | ✅ stat "apricot"
+| (none)                | Open               | ❌ os.ErrNotExist      | ❌ os.ErrNotExist
+| "APRICOT"             | Open               | ✅ open "apricot"      | ❌ screw.ErrWrongCase
+| "apricot"             | Open               | ✅ open "apricot"      | ✅ open "apricot"
+| (none)                | Create             | ✅ create "apricot"    | ✅ create "apricot"
+| "APRICOT"             | Create             | ✅ truncate "APRICOT"  | ❌ screw.ErrWrongCase
+| "apricot"             | Create             | ✅ truncate "apricot"  | ✅ truncate "apricot"
 
-  - `screw.Rename` works properly for renames where *only the casing changes*.
-  It appears that `os.Rename` also works for that scenario on Go 1.13 / Windows 10,
-  but it wasn't always the case, so, for older versions, this will work (by first
-  renaming to a temp name).
-  - `screw.Rename` retries if it gets a permission denied error.
-  - `screw.OpenFile` / `screw.Stat` / `screw.Lstat` return ErrNotFound
-  for files that don't exist *with this exact casing*
-  - `screw.Create` fails if another file exists with a different casing
+Note that the behavior is actually implemented in `OpenFile` so these are equivalent:
 
+| Shorthand             | Actual call                                  |
+|-----------------------|----------------------------------------------|
+| Open(name)            | OpenFile(name, O_RDONLY, 0)                  |
+| Create(name)          | OpenFile(name, O_RDWR|O_CREATE|O_TRUNC, 0666 |
 
+Additional functions:
 
+| Existing file name    | Operation             | Result
+|-----------------------|-----------------------|--------------------
+| (none)                | IsActualCase          | ❌ `os.ErrNotExist`
+| "APRICOT"             | IsActualCase          | ✅ `false`
+| "apricot"             | IsActualCase          | ✅ `true`
+
+Additionally, `screw.Rename` contains retry logic on Windows (to sidestep spurious AV file locking),
+and logic for older versions of Windows that don't support case-only renames.

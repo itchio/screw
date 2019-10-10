@@ -20,7 +20,7 @@ func MkdirAll(name string, perm os.FileMode) error {
 }
 
 func Create(name string) (*os.File, error) {
-	return os.Create(name)
+	return OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
 func Open(name string) (*os.File, error) {

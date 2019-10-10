@@ -14,9 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Note: on macOS, these tests assume we're running on
-// a case-sensitive filesystem like HFS+ or APFS
-
 func Test_Open(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		return

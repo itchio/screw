@@ -13,24 +13,47 @@ import (
 )
 
 func Rename(oldpath, newpath string) error {
-	if strings.ToLower(oldpath) == strings.ToLower(newpath) {
-		tmppath := oldpath + fmt.Sprintf("_rename_%d", os.Getpid())
-		err := doRename(oldpath, tmppath)
-		if err != nil {
-			return err
-		}
-
-		err = doRename(tmppath, newpath)
-		if err != nil {
-			// wouldn't really know what to do with a second error here
-			_ = doRename(tmppath, oldpath)
-			return err
-		}
-
-		return nil
+	err := doRename(oldpath, newpath)
+	if err != nil {
+		return err
 	}
 
-	return os.Rename(oldpath, newpath)
+	// casing changed?
+	if strings.ToLower(oldpath) == strings.ToLower(newpath) {
+		// was it changed properly?
+		isActual, err := IsActualCasing(newpath)
+		if err != nil {
+			return &os.PathError{
+				Op:   "screw.Rename",
+				Path: newpath,
+				Err:  ErrWrongCasing,
+			}
+		}
+
+		if isActual {
+			// thankfully, yes!
+			return nil
+		}
+
+		if !isActual {
+			tmppath := oldpath + fmt.Sprintf("_rename_%d", os.Getpid())
+			err := doRename(oldpath, tmppath)
+			if err != nil {
+				// here is an awkward place to return an error, but
+				// if anyone has a better idea, I'm listening.. :(
+				return err
+			}
+
+			err = doRename(tmppath, newpath)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func doRename(oldpath, newpath string) error {
