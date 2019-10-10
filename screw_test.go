@@ -6,13 +6,22 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/itchio/screw"
 	"github.com/stretchr/testify/assert"
 )
 
+// Note: on macOS, these tests assume we're running on
+// a case-sensitive filesystem like HFS+ or APFS
+
 func Test_Open(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		return
+	}
+
 	assert := assert.New(t)
 
 	tmpDir, err := ioutil.TempDir("", "screw-test-open")
@@ -26,37 +35,65 @@ func Test_Open(t *testing.T) {
 	must(err)
 	must(f.Close())
 
-	ensureYay := func(f *os.File, err error) {
-		assert.NotNil(f)
-		assert.NoError(err)
+	canOpen := func(open func(name string) (*os.File, error), name string) {
+		f, err := open(name)
+		must(err)
 		must(f.Close())
 	}
 
-	ensureNah := func(f *os.File, err error) {
+	canStat := func(stat func(name string) (os.FileInfo, error), name string) {
+		_, err := stat(name)
+		must(err)
+	}
+
+	wontOpen := func(open func(name string) (*os.File, error), name string) {
+		_, err := open(name)
 		assert.Error(err)
-		assert.Nil(f)
+		if err == nil {
+			t.FailNow()
+		}
 	}
 
-	// os
-	ensureYay(os.Open(tmpDir + `\foo\bar.txt`))
-	ensureYay(os.Open(tmpDir + `\FOO\..\foo\bar.txt`))
-	if runtime.GOOS == "windows" {
-		ensureYay(os.Open(tmpDir + `\foo\BAR.txt`))
-		ensureYay(os.Open(tmpDir + `\FOO\bar.txt`))
-	} else {
-		ensureNah(os.Open(tmpDir + `\foo\BAR.txt`))
-		ensureNah(os.Open(tmpDir + `\FOO\bar.txt`))
+	wontStat := func(stat func(name string) (os.FileInfo, error), name string) {
+		_, err := stat(name)
+		assert.Error(err)
+		if err == nil {
+			t.FailNow()
+		}
 	}
 
-	// screw
-	ensureYay(screw.Open(tmpDir + `\foo\bar.txt`))
-	ensureYay(screw.Open(tmpDir + `\FOO\..\foo\bar.txt`))
+	joinPath := func(a ...string) string {
+		return strings.Join(a, `\`)
+	}
 
-	ensureNah(screw.Open(tmpDir + `\foo\BAR.txt`))
-	ensureNah(screw.Open(tmpDir + `\FOO\bar.txt`))
+	paths := []string{
+		joinPath(tmpDir, "foo", "bar"),
+		joinPath(tmpDir, "foo", "BAR"),
+		joinPath(tmpDir, "FOO", "bar"),
+	}
+
+	// Windows can operate on any of these paths
+	for _, path := range paths {
+		canOpen(os.Open, path)
+		canStat(os.Stat, path)
+		canStat(os.Lstat, path)
+	}
+
+	// Screw wants the right one
+	for i, path := range paths {
+		if i == 0 {
+			canOpen(screw.Open, path)
+			canStat(screw.Stat, path)
+			canStat(screw.Lstat, path)
+		} else {
+			wontOpen(screw.Open, path)
+			wontStat(screw.Stat, path)
+			wontStat(screw.Lstat, path)
+		}
+	}
 }
 
-func Test_Rename(t *testing.T) {
+func Test_RenameCase(t *testing.T) {
 	assert := assert.New(t)
 
 	tmpDir, err := ioutil.TempDir("", "screw-test-rename")
@@ -71,6 +108,23 @@ func Test_Rename(t *testing.T) {
 	assert.True(screw.IsActualCasing(filepath.Join(tmpDir, "foobar")))
 	must(screw.Rename(filepath.Join(tmpDir, "foobar"), filepath.Join(tmpDir, "Foobar")))
 	assert.True(screw.IsActualCasing(filepath.Join(tmpDir, "Foobar")))
+}
+
+func Test_RenameLocked(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "screw-test-rename")
+	must(err)
+
+	defer os.RemoveAll(tmpDir)
+
+	f, err := os.Create(filepath.Join(tmpDir, "foobar"))
+	must(err)
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		f.Close()
+	}()
+
+	must(screw.Rename(filepath.Join(tmpDir, "foobar"), filepath.Join(tmpDir, "something-else")))
 }
 
 func must(err error) {

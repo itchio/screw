@@ -1,8 +1,15 @@
 package screw
 
-import "os"
+import (
+	"errors"
+	"os"
+)
 
 var DEBUG = os.Getenv("DEBUG_SCREW") == "1"
+
+var (
+	ErrWrongCasing = errors.New("file on disk has a different casing")
+)
 
 func Mkdir(name string, perm os.FileMode) error {
 	return os.Mkdir(name, perm)

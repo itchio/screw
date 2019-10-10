@@ -68,11 +68,49 @@ func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 		}
 	} else {
 		if !actualCasing {
-			return nil, os.ErrNotExist
+			return nil, &os.PathError{
+				Op:   "screw.OpenFile",
+				Path: name,
+				Err:  ErrWrongCasing,
+			}
 		}
 	}
 
 	return os.OpenFile(name, flag, perm)
+}
+
+func Stat(name string) (os.FileInfo, error) {
+	actualCasing, err := IsActualCasing(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !actualCasing {
+		return nil, &os.PathError{
+			Op:   "screw.Stat",
+			Path: name,
+			Err:  ErrWrongCasing,
+		}
+	}
+
+	return os.Stat(name)
+}
+
+func Lstat(name string) (os.FileInfo, error) {
+	actualCasing, err := IsActualCasing(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !actualCasing {
+		return nil, &os.PathError{
+			Op:   "screw.Stat",
+			Path: name,
+			Err:  ErrWrongCasing,
+		}
+	}
+
+	return os.Lstat(name)
 }
 
 func IsActualCasing(path string) (bool, error) {

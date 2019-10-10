@@ -18,8 +18,9 @@ On Windows:
   but it wasn't always the case, so, for older versions, this will work (by first
   renaming to a temp name).
   - `screw.Rename` retries if it gets a permission denied error.
-  - `screw.OpenFile` / `screw.Create` / (and soon `screw.Stat`) return ErrNotFound
+  - `screw.OpenFile` / `screw.Stat` / `screw.Lstat` return ErrNotFound
   for files that don't exist *with this exact casing*
+  - `screw.Create` fails if another file exists with a different casing
 
 
 
