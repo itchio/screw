@@ -31,7 +31,7 @@ func Test_Open(t *testing.T) {
 
 	must(os.Mkdir(filepath.Join(tmpDir, "foo"), os.FileMode(755)))
 
-	f, err := os.Create(filepath.Join(tmpDir, "foo", "bar.txt"))
+	f, err := os.Create(filepath.Join(tmpDir, "foo", "bar"))
 	must(err)
 	must(f.Close())
 
