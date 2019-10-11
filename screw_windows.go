@@ -312,7 +312,11 @@ func getActualCasing(absolutePath string) (string, error) {
 	}
 
 	if filepath.Dir(absoluteParentPath) == absoluteParentPath {
-		return filepath.Join(absoluteParentPath, actualBaseName), nil
+		// At this point, `absoluteParentPath` is `C:\`, or a casing
+		// variant thereof. The canonical version of drive letters is
+		// uppercase, so let's force it now just in case
+		drive := strings.ToUpper(absoluteParentPath)
+		return filepath.Join(drive, actualBaseName), nil
 	} else {
 		actualParent, err := getActualCasing(absoluteParentPath)
 		if err != nil {

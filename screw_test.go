@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -951,6 +952,62 @@ func Test_Semantics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_IsActualCasing(t *testing.T) {
+	if runtime.GOOS == "linux" {
+		t.Skip()
+	}
+
+	assert := assert.New(t)
+
+	tmpDir, err := ioutil.TempDir("", "screw-test-actual")
+	must(err)
+
+	reference := filepath.Join(tmpDir, "foo", "bar", "baz")
+
+	err = os.MkdirAll(reference, 0o755)
+	must(err)
+
+	var is bool
+
+	is, err = screw.IsActualCasing(reference)
+	assert.NoError(err)
+	assert.True(is)
+
+	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "bar", "BAZ"))
+	assert.NoError(err)
+	assert.False(is)
+
+	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "BAR", "baz"))
+	assert.NoError(err)
+	assert.False(is)
+
+	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "bar", "woops"))
+	assert.Error(err)
+	assert.False(is)
+
+	var actual string
+
+	actual, err = screw.GetActualCasing(reference)
+	assert.NoError(err)
+	assert.Equal(reference, actual)
+
+	actual, err = screw.GetActualCasing(strings.ToUpper(reference))
+	assert.NoError(err)
+	assert.Equal(reference, actual)
+
+	actual, err = screw.GetActualCasing(strings.ToLower(reference))
+	assert.NoError(err)
+	assert.Equal(reference, actual)
+
+	actual, err = screw.GetActualCasing(filepath.Join(tmpDir, "FOO", "bar", "baz"))
+	assert.NoError(err)
+	assert.Equal(reference, actual)
+
+	actual, err = screw.GetActualCasing(filepath.Join(tmpDir, "foo", "BAR", "baz"))
+	assert.NoError(err)
+	assert.Equal(reference, actual)
 }
 
 func Test_RenameCase(t *testing.T) {
