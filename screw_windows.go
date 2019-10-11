@@ -25,7 +25,7 @@ func Rename(oldpath, newpath string) error {
 			return &os.PathError{
 				Op:   "screw.Rename",
 				Path: newpath,
-				Err:  ErrWrongCasing,
+				Err:  ErrWrongCase,
 			}
 		}
 
@@ -87,7 +87,7 @@ func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 			return nil, &os.PathError{
 				Op:   "screw.OpenFile",
 				Path: name,
-				Err:  ErrWrongCasing,
+				Err:  ErrWrongCase,
 			}
 		}
 	}
@@ -105,7 +105,7 @@ func Stat(name string) (os.FileInfo, error) {
 		return nil, &os.PathError{
 			Op:   "screw.Stat",
 			Path: name,
-			Err:  ErrWrongCasing,
+			Err:  ErrWrongCase,
 		}
 	}
 
@@ -122,7 +122,7 @@ func Lstat(name string) (os.FileInfo, error) {
 		return nil, &os.PathError{
 			Op:   "screw.Stat",
 			Path: name,
-			Err:  ErrWrongCasing,
+			Err:  ErrWrongCase,
 		}
 	}
 

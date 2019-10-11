@@ -8,7 +8,7 @@ import (
 var DEBUG = os.Getenv("DEBUG_SCREW") == "1"
 
 var (
-	ErrWrongCasing = errors.New("file on disk has a different casing")
+	ErrWrongCase = errors.New("a file with a different case exists on disk")
 )
 
 func Mkdir(name string, perm os.FileMode) error {

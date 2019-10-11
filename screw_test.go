@@ -1,6 +1,7 @@
 package screw_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,12 @@ import (
 	"github.com/itchio/screw"
 	"github.com/stretchr/testify/assert"
 )
+
+func ErrorIs(expected error) func(err error) bool {
+	return func(actual error) bool {
+		return errors.Is(actual, expected)
+	}
+}
 
 type OpFunc func(name string) (bool, error)
 
@@ -107,38 +114,100 @@ func (tc TestCase) ShouldRun(t *testing.T) bool {
 	return false
 }
 
-var testCases = []TestCase{
-	TestCase{
-		Name:       "os.Stat, non-existent file",
-		CreateFile: None,
-		PassFile:   "apricot",
-		Operation:  OpStat(os.Stat),
-		Error:      os.IsNotExist,
-	},
-	TestCase{
-		Name:       "screw.Stat, non-existent file",
-		CreateFile: None,
-		PassFile:   "apricot",
-		Operation:  OpStat(screw.Stat),
-		Error:      os.IsNotExist,
-	},
-	TestCase{
-		Name:       "os.Lstat, non-existent file",
-		CreateFile: None,
-		PassFile:   "apricot",
-		Operation:  OpStat(os.Lstat),
-		Error:      os.IsNotExist,
-	},
-	TestCase{
-		Name:       "screw.Lstat, non-existent file",
-		CreateFile: None,
-		PassFile:   "apricot",
-		Operation:  OpStat(screw.Lstat),
-		Error:      os.IsNotExist,
-	},
+func listTestCases() []TestCase {
+	var testCases []TestCase
+
+	type statVariant struct {
+		name string
+		op   OpFunc
+	}
+
+	osStatVariants := []statVariant{
+		{
+			name: "os.Stat",
+			op:   OpStat(os.Stat),
+		},
+		{
+			name: "os.Lstat",
+			op:   OpStat(os.Lstat),
+		},
+	}
+
+	for _, variant := range osStatVariants {
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " nonexistent",
+			CreateFile: None,
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Error:      os.IsNotExist,
+		})
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " wrongcase-windows-darwin",
+			CreateFile: "APRICOT",
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Success:    true,
+			OSes:       []OS{Windows, Darwin},
+		})
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " wrongcase-linux",
+			CreateFile: "APRICOT",
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Error:      os.IsNotExist,
+			OSes:       []OS{Linux},
+		})
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " rightcase",
+			CreateFile: "apricot",
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Success:    true,
+		})
+	}
+
+	screwStatVariants := []statVariant{
+		{
+			name: "screw.Stat",
+			op:   OpStat(screw.Stat),
+		},
+		{
+			name: "screw.Lstat",
+			op:   OpStat(screw.Lstat),
+		},
+	}
+
+	for _, variant := range screwStatVariants {
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " nonexistent",
+			CreateFile: None,
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Error:      os.IsNotExist,
+		})
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " wrongcase",
+			CreateFile: "APRICOT",
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Error:      ErrorIs(screw.ErrWrongCase),
+			OSes:       []OS{Windows, Darwin},
+		})
+		testCases = append(testCases, TestCase{
+			Name:       variant.name + " rightcase",
+			CreateFile: "apricot",
+			PassFile:   "apricot",
+			Operation:  variant.op,
+			Success:    true,
+		})
+	}
+
+	return testCases
 }
 
 func Test_Semantics(t *testing.T) {
+	testCases := listTestCases()
+
 	for _, tc := range testCases {
 		tc.AssertValid()
 		if !tc.ShouldRun(t) {
@@ -158,7 +227,7 @@ func Test_Semantics(t *testing.T) {
 				must(f.Close())
 			}
 
-			success, error := tc.Operation(tc.PassFile)
+			success, error := tc.Operation(filepath.Join(dir, tc.PassFile))
 
 			if tc.Success {
 				assert.True(success, "operation should succeed")
