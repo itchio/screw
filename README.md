@@ -150,7 +150,12 @@ func main() {
 What about `screw`? Shouldn't it have its own `File` type to prevent that?
 
 In `screw`, that's not a problem, because the above code sample fails at the first line
-with `os.ErrNotFound`
+with `os.ErrNotFound`, so any `os.FileInfo` obtained via screw contains the exact casing.
+
+Similarly `file.Readdir()` and `file.Readdirname()` can only be called on a file
+opened with its exact casing.
+
+## What about `ioutil` ?
 
 ## API Additions
 

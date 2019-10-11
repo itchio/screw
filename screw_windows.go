@@ -3,11 +3,11 @@
 package screw
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/windows"
 )
@@ -17,23 +17,78 @@ func Mkdir(name string, perm os.FileMode) error {
 
 	err := os.Mkdir(name, perm)
 	if err != nil {
-		return err
-	}
+		mkdirErr := err
+		if os.IsExist(mkdirErr) {
+			actualCase, err := IsActualCasing(name)
+			if err != nil {
+				return wrap(err)
+			}
+			if !actualCase {
+				return wrap(ErrCaseConflict)
+			}
+		}
 
-	actualCase, err := IsActualCasing(name)
-	if err != nil {
-		return wrap(err)
-	}
-	if !actualCase {
-		return wrap(ErrCaseConflict)
+		return mkdirErr
 	}
 	return nil
 }
 
-func MkdirAll(name string, perm os.FileMode) error {
-	wrap := mkwrap("screw.MkdirAll", name)
+func MkdirAll(path string, perm os.FileMode) error {
+	wrap := mkwrap("screw.MkdirAll", path)
 
-	return wrap(errors.New("stub!"))
+	// modelled after `go/src/os/path.go`
+
+	// Fast path: if we can tell whether path is a directory or file, stop with success or error.
+	dir, err := Stat(path)
+	if err == nil {
+		if dir.IsDir() {
+			return nil
+		}
+		return wrap(syscall.ENOTDIR)
+	}
+
+	// Slow path: make sure parent exists and then call Mkdir for path.
+	i := len(path)
+	for i > 0 && os.IsPathSeparator(path[i-1]) { // Skip trailing path separator.
+		i--
+	}
+
+	j := i
+	for j > 0 && !os.IsPathSeparator(path[j-1]) { // Scan backward over element.
+		j--
+	}
+
+	if j > 1 {
+		// Create parent.
+		err = MkdirAll(fixRootDirectory(path[:j-1]), perm)
+		if err != nil {
+			return wrap(err)
+		}
+	}
+
+	// Parent now exists; invoke Mkdir and use its result.
+	err = Mkdir(path, perm)
+	if err != nil {
+		// Handle arguments like "foo/." by
+		// double-checking that directory doesn't exist.
+		dir, err1 := Lstat(path)
+		if err1 == nil && dir.IsDir() {
+			return nil
+		}
+		return wrap(err)
+	}
+	return nil
+}
+
+// fixRootDirectory fixes a reference to a drive's root directory to
+// have the required trailing slash.
+func fixRootDirectory(p string) string {
+	if len(p) == len(`\\?\c:`) {
+		if os.IsPathSeparator(p[0]) && os.IsPathSeparator(p[1]) && p[2] == '?' && os.IsPathSeparator(p[3]) && p[5] == ':' {
+			return p + `\`
+		}
+	}
+	return p
 }
 
 func Rename(oldpath, newpath string) error {
@@ -213,65 +268,71 @@ func Remove(name string) error {
 	return nil
 }
 
-func IsActualCasing(path string) (bool, error) {
-	path, err := filepath.Abs(path)
+func IsActualCasing(name string) (bool, error) {
+	absolutePath, err := filepath.Abs(name)
+	if err != nil {
+		return false, err
+	}
+	return isActualCasing(absolutePath)
+}
+
+func isActualCasing(absolutePath string) (bool, error) {
+	actualBaseName, err := getActualBaseName(absolutePath)
 	if err != nil {
 		return false, err
 	}
 
-	return isActualCasing(path)
+	if filepath.Base(absolutePath) != actualBaseName {
+		return false, err
+	}
+
+	absoluteParentPath := filepath.Dir(absolutePath)
+
+	// true for `C:\`, etc.
+	if absoluteParentPath == filepath.Dir(absoluteParentPath) {
+		return true, nil
+	} else {
+		return isActualCasing(absoluteParentPath)
+	}
 }
 
-func isActualCasing(path string) (bool, error) {
-	debugf("testing (%s)", path)
+func GetActualCasing(name string) (string, error) {
+	absolutePath, err := filepath.Abs(name)
+	if err != nil {
+		return "", err
+	}
+	return getActualCasing(absolutePath)
+}
 
+func getActualCasing(absolutePath string) (string, error) {
+	absoluteParentPath := filepath.Dir(absolutePath)
+	actualBaseName, err := getActualBaseName(absolutePath)
+	if err != nil {
+		return "", err
+	}
+
+	if filepath.Dir(absoluteParentPath) == absoluteParentPath {
+		return filepath.Join(absoluteParentPath, actualBaseName), nil
+	} else {
+		actualParent, err := getActualCasing(absoluteParentPath)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(actualParent, actualBaseName), nil
+	}
+}
+
+func getActualBaseName(path string) (string, error) {
 	var data windows.Win32finddata
 	utf16Str, err := windows.UTF16FromString(path)
 	if err != nil {
-		debugf("utf16 error: +%v", err)
-		return false, err
+		return "", err
 	}
 
 	_, err = windows.FindFirstFile(&utf16Str[0], &data)
 	if err != nil {
-		debugf("file not found: %+v", err)
-		return false, err
-	}
-	name := windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1])
-
-	reqpath := filepath.Base(path)
-	actpath := name
-
-	if reqpath != actpath {
-		debugf("requested (%s) != actual (%s)", reqpath, actpath)
-		return false, err
+		return "", err
 	}
 
-	dir := filepath.Dir(path)
-	// true for `C:\`, etc.
-	if dir == filepath.Dir(dir) {
-		return true, nil
-	} else {
-		return IsActualCasing(dir)
-	}
-}
-
-func debugf(f string, arg ...interface{}) {
-	if DEBUG {
-		fmt.Printf("[screw] %s\n", fmt.Sprintf(f, arg...))
-	}
-}
-
-func mkwrap(op string, path string) func(err error) error {
-	return func(err error) error {
-		return wrap(err, op, path)
-	}
-}
-
-func wrap(err error, op string, path string) error {
-	return &os.PathError{
-		Op:   op,
-		Path: path,
-		Err:  err,
-	}
+	return windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1]), nil
 }

@@ -46,6 +46,17 @@ func OpCreate(create func(name string) (*os.File, error)) OpFunc {
 	}
 }
 
+func OpMkdir(mkdir func(name string, perm os.FileMode) error) OpFunc {
+	return func(name string) (bool, error) {
+		err := mkdir(name, 0o755)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+}
+
 func OpStat(stat func(name string) (os.FileInfo, error)) OpFunc {
 	return func(name string) (bool, error) {
 		_, err := stat(name)
@@ -455,6 +466,131 @@ func listTestCases() []TestCase {
 		Success:     true,
 	})
 
+	//==========================
+	// Mkdir
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.Mkdir/nonexistent",
+		Argument:  "apricot",
+		Operation: OpMkdir(os.Mkdir),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.Mkdir/mixedcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.Mkdir),
+		Error:      os.IsExist,
+		FSKind:     FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.Mkdir/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.Mkdir),
+		Success:    true,
+		FSKind:     FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.Mkdir/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.Mkdir),
+		Error:      os.IsExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.Mkdir/nonexistent",
+		Argument:  "apricot",
+		Operation: OpMkdir(screw.Mkdir),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.Mkdir/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.Mkdir),
+		Error:      ErrorIs(screw.ErrCaseConflict),
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.Mkdir/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.Mkdir),
+		Error:      os.IsExist,
+	})
+
+	//==========================
+	// MkdirAll
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.MkdirAll/nonexistent",
+		Argument:  "apricot",
+		Operation: OpMkdir(os.MkdirAll),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.MkdirAll/mixedcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"APRICOT"},
+		FSKind:     FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.MkdirAll/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"APRICOT", "apricot"},
+		FSKind:     FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.MkdirAll/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.MkdirAll/nonexistent",
+		Argument:  "apricot",
+		Operation: OpMkdir(screw.MkdirAll),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.MkdirAll/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Error:      ErrorIs(screw.ErrCaseConflict),
+		DirsAfter:  []string{"APRICOT"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.MkdirAll/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"apricot"},
+	})
+
 	return testCases
 }
 
@@ -494,9 +630,11 @@ func Test_Semantics(t *testing.T) {
 
 			if tc.Success {
 				assert.True(success, "operation should succeed")
+				assert.NoError(error, "operation should not have an error")
 			}
 
 			if tc.Error != nil {
+				assert.False(success, "operation should not succeed")
 				assert.NotNil(error)
 				if error != nil {
 					assert.True(tc.Error(error), "error must pass test function")

@@ -43,3 +43,11 @@ func IsActualCasing(path string) (bool, error) {
 	}
 	return true, nil
 }
+
+func GetActualCasing(path string) (string, error) {
+	_, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
+}
