@@ -34,6 +34,26 @@ func OpOpen(open func(name string) (*os.File, error)) OpFunc {
 	}
 }
 
+func OpReadFile(readfile func(name string) ([]byte, error)) OpFunc {
+	return func(name string) (bool, error) {
+		_, err := readfile(name)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
+func OpReadDir(readdir func(name string) ([]os.FileInfo, error)) OpFunc {
+	return func(name string) (bool, error) {
+		_, err := readdir(name)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
 func OpCreate(create func(name string) (*os.File, error)) OpFunc {
 	return func(name string) (bool, error) {
 		f, err := create(name)
@@ -200,7 +220,8 @@ func listTestCases() []TestCase {
 			Argument:    "apricot",
 			Operation:   variant.op,
 			Success:     true,
-			FSKind:      FSCaseInsensitive,
+
+			FSKind: FSCaseInsensitive,
 		})
 		testCases = append(testCases, TestCase{
 			Name:        variant.name + "/wrongcase",
@@ -208,7 +229,8 @@ func listTestCases() []TestCase {
 			Argument:    "apricot",
 			Operation:   variant.op,
 			Error:       os.IsNotExist,
-			FSKind:      FSCaseSensitive,
+
+			FSKind: FSCaseSensitive,
 		})
 		testCases = append(testCases, TestCase{
 			Name:        variant.name + "/rightcase",
@@ -247,7 +269,8 @@ func listTestCases() []TestCase {
 			Argument:    "apricot",
 			Operation:   variant.op,
 			Error:       os.IsNotExist,
-			FSKind:      FSCaseInsensitive,
+
+			FSKind: FSCaseInsensitive,
 		})
 		testCases = append(testCases, TestCase{
 			Name:        variant.name + "/wrongcase",
@@ -255,7 +278,8 @@ func listTestCases() []TestCase {
 			Argument:    "apricot",
 			Operation:   variant.op,
 			Error:       os.IsNotExist,
-			FSKind:      FSCaseSensitive,
+
+			FSKind: FSCaseSensitive,
 		})
 		testCases = append(testCases, TestCase{
 			Name:        variant.name + "/rightcase",
@@ -265,6 +289,130 @@ func listTestCases() []TestCase {
 			Success:     true,
 		})
 	}
+
+	//==========================
+	// ReadFile
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "ioutil.ReadFile/nonexistent",
+		Argument:  "apricot",
+		Operation: OpReadFile(ioutil.ReadFile),
+		Error:     os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.ReadFile/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpReadFile(ioutil.ReadFile),
+		Success:     true,
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.ReadFile/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpReadFile(ioutil.ReadFile),
+		Error:       os.IsNotExist,
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.ReadFile/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpReadFile(ioutil.ReadFile),
+		Success:     true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.ReadFile/nonexistent",
+		Argument:  "apricot",
+		Operation: OpReadFile(screw.ReadFile),
+		Error:     os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.ReadFile/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpReadFile(screw.ReadFile),
+		Error:       os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.ReadFile/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpReadFile(screw.ReadFile),
+		Success:     true,
+	})
+
+	//==========================
+	// ReadDir
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "ioutil.ReadDir/nonexistent",
+		Argument:  "apricot",
+		Operation: OpReadDir(ioutil.ReadDir),
+		Error:     os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "ioutil.ReadDir/mixedcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpReadDir(ioutil.ReadDir),
+		Success:    true,
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "ioutil.ReadDir/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpReadDir(ioutil.ReadDir),
+		Error:      os.IsNotExist,
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "ioutil.ReadDir/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpReadDir(ioutil.ReadDir),
+		Success:    true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.ReadDir/nonexistent",
+		Argument:  "apricot",
+		Operation: OpReadDir(screw.ReadDir),
+		Error:     os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.ReadDir/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpReadDir(screw.ReadDir),
+		Error:      os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.ReadDir/rightcase",
+		DirsBefore: []string{"apricot"},
+		Argument:   "apricot",
+		Operation:  OpReadDir(screw.ReadDir),
+		Success:    true,
+	})
 
 	//==========================
 	// Create
@@ -284,7 +432,8 @@ func listTestCases() []TestCase {
 		Operation:   OpCreate(os.Create),
 		Success:     true,
 		FilesAfter:  []string{"APRICOT"},
-		FSKind:      FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 	testCases = append(testCases, TestCase{
 		Name:        "os.Create/wrongcase",
@@ -293,7 +442,8 @@ func listTestCases() []TestCase {
 		Operation:   OpCreate(os.Create),
 		Success:     true,
 		FilesAfter:  []string{"apricot", "APRICOT"},
-		FSKind:      FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 	testCases = append(testCases, TestCase{
 		Name:        "os.Create/rightcase",
@@ -317,7 +467,8 @@ func listTestCases() []TestCase {
 		Operation:   OpCreate(screw.Create),
 		Error:       ErrorIs(screw.ErrCaseConflict),
 		FilesAfter:  []string{"APRICOT"},
-		FSKind:      FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 	testCases = append(testCases, TestCase{
 		Name:        "screw.Create/wrongcase",
@@ -326,7 +477,8 @@ func listTestCases() []TestCase {
 		Operation:   OpCreate(screw.Create),
 		Success:     true,
 		FilesAfter:  []string{"apricot", "APRICOT"},
-		FSKind:      FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 	testCases = append(testCases, TestCase{
 		Name:        "screw.Create/rightcase",
@@ -355,7 +507,8 @@ func listTestCases() []TestCase {
 		Operation:   OpRemove(os.Remove),
 		Success:     true,
 		AbsentAfter: []string{"APRICOT"},
-		FSKind:      FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -364,7 +517,8 @@ func listTestCases() []TestCase {
 		Argument:    "apricot",
 		Operation:   OpRemove(os.Remove),
 		Error:       os.IsNotExist,
-		FSKind:      FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -419,7 +573,8 @@ func listTestCases() []TestCase {
 		Operation:   OpRemove(os.RemoveAll),
 		AbsentAfter: []string{"APRICOT/README", "APRICOT"},
 		Success:     true,
-		FSKind:      FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -429,7 +584,8 @@ func listTestCases() []TestCase {
 		Operation:   OpRemove(os.RemoveAll),
 		Success:     true,
 		FilesAfter:  []string{"APRICOT/README"},
-		FSKind:      FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -483,7 +639,8 @@ func listTestCases() []TestCase {
 		Argument:   "apricot",
 		Operation:  OpMkdir(os.Mkdir),
 		Error:      os.IsExist,
-		FSKind:     FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -492,7 +649,8 @@ func listTestCases() []TestCase {
 		Argument:   "apricot",
 		Operation:  OpMkdir(os.Mkdir),
 		Success:    true,
-		FSKind:     FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -501,6 +659,45 @@ func listTestCases() []TestCase {
 		Argument:   "apricot",
 		Operation:  OpMkdir(os.Mkdir),
 		Error:      os.IsExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.Mkdir/nonexistentparent",
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(os.Mkdir),
+		Error:       os.IsNotExist,
+		AbsentAfter: []string{"foo", "foo/bar"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.Mkdir/mixedcaseparent",
+		DirsBefore: []string{"FOO"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(os.Mkdir),
+		Success:    true,
+		DirsAfter:  []string{"FOO", "FOO/bar"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.Mkdir/wrongcaseparent",
+		DirsBefore:  []string{"FOO"},
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(os.Mkdir),
+		Error:       os.IsNotExist,
+		AbsentAfter: []string{"foo", "foo/bar"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.Mkdir/rightcaseparent",
+		DirsBefore: []string{"foo"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(os.Mkdir),
+		DirsAfter:  []string{"foo", "foo/bar"},
+		Success:    true,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -526,6 +723,34 @@ func listTestCases() []TestCase {
 		Error:      os.IsExist,
 	})
 
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Mkdir/nonexistentparent",
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(screw.Mkdir),
+		Error:       os.IsNotExist,
+		AbsentAfter: []string{"foo", "foo/bar"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Mkdir/wrongcaseparent",
+		DirsBefore:  []string{"FOO"},
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(screw.Mkdir),
+		Error:       os.IsNotExist,
+		AbsentAfter: []string{"foo", "foo/bar"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.Mkdir/rightcaseparent",
+		DirsBefore: []string{"foo"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(screw.Mkdir),
+		Success:    true,
+		DirsAfter:  []string{"foo", "foo/bar"},
+	})
+
 	//==========================
 	// MkdirAll
 	//==========================
@@ -544,7 +769,8 @@ func listTestCases() []TestCase {
 		Operation:  OpMkdir(os.MkdirAll),
 		Success:    true,
 		DirsAfter:  []string{"APRICOT"},
-		FSKind:     FSCaseInsensitive,
+
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -554,7 +780,8 @@ func listTestCases() []TestCase {
 		Operation:  OpMkdir(os.MkdirAll),
 		Success:    true,
 		DirsAfter:  []string{"APRICOT", "apricot"},
-		FSKind:     FSCaseSensitive,
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -564,6 +791,45 @@ func listTestCases() []TestCase {
 		Operation:  OpMkdir(os.MkdirAll),
 		Success:    true,
 		DirsAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.MkdirAll/nonexistentparent",
+		Argument:  "foo/bar",
+		Operation: OpMkdir(os.MkdirAll),
+		Success:   true,
+		DirsAfter: []string{"foo", "foo/bar"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.MkdirAll/mixedcaseparent",
+		DirsBefore: []string{"FOO"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"FOO", "foo/bar"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.MkdirAll/wrongcaseparent",
+		DirsBefore:  []string{"FOO"},
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(os.MkdirAll),
+		Error:       os.IsNotExist,
+		AbsentAfter: []string{"FOO/bar"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "os.MkdirAll/rightcaseparent",
+		DirsBefore: []string{"foo"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"foo", "foo/bar"},
 	})
 
 	testCases = append(testCases, TestCase{
@@ -589,6 +855,32 @@ func listTestCases() []TestCase {
 		Operation:  OpMkdir(screw.MkdirAll),
 		Success:    true,
 		DirsAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.MkdirAll/nonexistentparent",
+		Argument:  "foo/bar",
+		Operation: OpMkdir(screw.MkdirAll),
+		Success:   true,
+		DirsAfter: []string{"foo", "foo/bar"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.MkdirAll/wrongcaseparent",
+		DirsBefore:  []string{"FOO"},
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(screw.MkdirAll),
+		Error:       ErrorIs(screw.ErrCaseConflict),
+		AbsentAfter: []string{"FOO/bar"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.MkdirAll/rightcaseparent",
+		DirsBefore: []string{"foo"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"foo", "foo/bar"},
 	})
 
 	return testCases
