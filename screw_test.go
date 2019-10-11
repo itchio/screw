@@ -130,12 +130,12 @@ func (tc TestCase) ShouldRun(t *testing.T) bool {
 func listTestCases() []TestCase {
 	var testCases []TestCase
 
-	type statVariant struct {
+	type opVariant struct {
 		name string
 		op   OpFunc
 	}
 
-	osStatVariants := []statVariant{
+	osVariants := []opVariant{
 		{
 			name: "os.Stat",
 			op:   OpStat(os.Stat),
@@ -144,9 +144,13 @@ func listTestCases() []TestCase {
 			name: "os.Lstat",
 			op:   OpStat(os.Lstat),
 		},
+		{
+			name: "os.Open", // not technically a stat, but..
+			op:   OpOpen(os.Open),
+		},
 	}
 
-	for _, variant := range osStatVariants {
+	for _, variant := range osVariants {
 		testCases = append(testCases, TestCase{
 			Name:         variant.name + " nonexistent",
 			ExistsBefore: None,
@@ -179,7 +183,7 @@ func listTestCases() []TestCase {
 		})
 	}
 
-	screwStatVariants := []statVariant{
+	screwVariants := []opVariant{
 		{
 			name: "screw.Stat",
 			op:   OpStat(screw.Stat),
@@ -188,9 +192,13 @@ func listTestCases() []TestCase {
 			name: "screw.Lstat",
 			op:   OpStat(screw.Lstat),
 		},
+		{
+			name: "screw.Open",
+			op:   OpOpen(screw.Open),
+		},
 	}
 
-	for _, variant := range screwStatVariants {
+	for _, variant := range screwVariants {
 		testCases = append(testCases, TestCase{
 			Name:         variant.name + " nonexistent",
 			ExistsBefore: None,
