@@ -34,6 +34,18 @@ func OpOpen(open func(name string) (*os.File, error)) OpFunc {
 	}
 }
 
+func OpCreate(create func(name string) (*os.File, error)) OpFunc {
+	return func(name string) (bool, error) {
+		f, err := create(name)
+		if err != nil {
+			return false, err
+		}
+
+		f.Close()
+		return true, nil
+	}
+}
+
 func OpStat(stat func(name string) (os.FileInfo, error)) OpFunc {
 	return func(name string) (bool, error) {
 		_, err := stat(name)
@@ -109,8 +121,6 @@ func (tc TestCase) ShouldRun(t *testing.T) bool {
 			return true
 		}
 	}
-
-	t.Logf("We're on (%s), skipping (%s)", runtime.GOOS, tc.Name)
 	return false
 }
 
