@@ -308,7 +308,7 @@ func listTestCases() []TestCase {
 		Operation:   OpReadFile(ioutil.ReadFile),
 		Success:     true,
 
-		FSKind: FSCaseSensitive,
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -370,7 +370,7 @@ func listTestCases() []TestCase {
 		Operation:  OpReadDir(ioutil.ReadDir),
 		Success:    true,
 
-		FSKind: FSCaseSensitive,
+		FSKind: FSCaseInsensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -713,6 +713,21 @@ func listTestCases() []TestCase {
 		Argument:   "apricot",
 		Operation:  OpMkdir(screw.Mkdir),
 		Error:      ErrorIs(screw.ErrCaseConflict),
+		DirsAfter: []string{"APRICOT"},
+		AbsentAfter: []string{"apricot"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.Mkdir/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.Mkdir),
+		Success: true,
+		DirsAfter: []string{"APRICOT", "apricot"},
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -817,8 +832,8 @@ func listTestCases() []TestCase {
 		DirsBefore:  []string{"FOO"},
 		Argument:    "foo/bar",
 		Operation:   OpMkdir(os.MkdirAll),
-		Error:       os.IsNotExist,
-		AbsentAfter: []string{"FOO/bar"},
+		Success: true,
+		DirsAfter: []string{"FOO", "foo/bar"},
 
 		FSKind: FSCaseSensitive,
 	})
@@ -846,6 +861,19 @@ func listTestCases() []TestCase {
 		Operation:  OpMkdir(screw.MkdirAll),
 		Error:      ErrorIs(screw.ErrCaseConflict),
 		DirsAfter:  []string{"APRICOT"},
+
+		FSKind: FSCaseInsensitive,
+	})
+	
+	testCases = append(testCases, TestCase{
+		Name:       "screw.MkdirAll/wrongcase",
+		DirsBefore: []string{"APRICOT"},
+		Argument:   "apricot",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Success: true,
+		DirsAfter:  []string{"apricot", "APRICOT"},
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -872,6 +900,19 @@ func listTestCases() []TestCase {
 		Operation:   OpMkdir(screw.MkdirAll),
 		Error:       ErrorIs(screw.ErrCaseConflict),
 		AbsentAfter: []string{"FOO/bar"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.MkdirAll/wrongcaseparent",
+		DirsBefore:  []string{"FOO"},
+		Argument:    "foo/bar",
+		Operation:   OpMkdir(screw.MkdirAll),
+		Success: true,
+		DirsAfter: []string{"FOO", "foo/bar"},
+
+		FSKind: FSCaseSensitive,
 	})
 
 	testCases = append(testCases, TestCase{
@@ -929,7 +970,7 @@ func Test_Semantics(t *testing.T) {
 				assert.False(success, "operation should not succeed")
 				assert.NotNil(error)
 				if error != nil {
-					assert.True(tc.Error(error), "error must pass test function")
+					assert.True(tc.Error(error), "error must pass test function, was %+v", error)
 				}
 			}
 
