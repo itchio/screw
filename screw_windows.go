@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"golang.org/x/sys/windows"
 )
@@ -57,8 +56,8 @@ func Rename(oldpath, newpath string) error {
 }
 
 func doRename(oldpath, newpath string) error {
-	sleepIntervals := []int{0, 250, 1000, 5 * 1000, 10 * 1000}
 	var lastErr error
+	sleeper := newSleeper()
 
 	for {
 		err := os.Rename(oldpath, newpath)
@@ -67,13 +66,7 @@ func doRename(oldpath, newpath string) error {
 			break
 		}
 
-		if len(sleepIntervals) > 0 && os.IsPermission(err) {
-			s := sleepIntervals[0]
-			sleepIntervals = sleepIntervals[1:]
-
-			sleepTime := time.Duration(s) * time.Millisecond
-			debugf("sleeping %v because: %+v", sleepTime, err)
-			time.Sleep(sleepTime)
+		if !os.IsNotExist(err) && sleeper.Sleep(err) {
 			continue
 		}
 		break
@@ -137,6 +130,15 @@ func Lstat(name string) (os.FileInfo, error) {
 }
 
 func IsActualCasing(path string) (bool, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return false, err
+	}
+
+	return isActualCasing(path)
+}
+
+func isActualCasing(path string) (bool, error) {
 	debugf("testing (%s)", path)
 
 	var data windows.Win32finddata
@@ -151,7 +153,7 @@ func IsActualCasing(path string) (bool, error) {
 		debugf("file not found: %+v", err)
 		return false, err
 	}
-	name := windows.UTF16ToString(data.FileName[:259])
+	name := windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1])
 
 	reqpath := filepath.Base(path)
 	actpath := name
@@ -162,7 +164,7 @@ func IsActualCasing(path string) (bool, error) {
 	}
 
 	dir := filepath.Dir(path)
-	// true for `/`, for `C:\`, etc.
+	// true for `C:\`, etc.
 	if dir == filepath.Dir(dir) {
 		return true, nil
 	} else {

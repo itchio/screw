@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Open(t *testing.T) {
+func Test_OpenStatLstat(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		return
 	}
@@ -117,7 +117,7 @@ func Test_RenameLocked(t *testing.T) {
 	must(err)
 
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(200 * time.Millisecond)
 		f.Close()
 	}()
 
