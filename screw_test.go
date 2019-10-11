@@ -81,10 +81,10 @@ type TestCase struct {
 	Name string
 
 	// name of file to create. if empty, no file is created
-	CreateFile string
+	ExistsBefore string
 
 	// name of file to pass to operation
-	PassFile string
+	Argument string
 
 	// operation, see OpOpen, OpStat, OpRemove
 	Operation OpFunc
@@ -97,12 +97,15 @@ type TestCase struct {
 	// of this error
 	Error func(err error) bool
 
+	// File names that must exist after this call
+	ExistsAfter []string
+
 	// if empty, test on all OSes
 	OSes []OS
 }
 
 func (tc TestCase) AssertValid() {
-	if tc.PassFile == "" {
+	if tc.Argument == "" {
 		panic("invalid test: empty PassFile")
 	}
 
@@ -145,34 +148,34 @@ func listTestCases() []TestCase {
 
 	for _, variant := range osStatVariants {
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " nonexistent",
-			CreateFile: None,
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Error:      os.IsNotExist,
+			Name:         variant.name + " nonexistent",
+			ExistsBefore: None,
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Error:        os.IsNotExist,
 		})
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " wrongcase-windows-darwin",
-			CreateFile: "APRICOT",
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Success:    true,
-			OSes:       []OS{Windows, Darwin},
+			Name:         variant.name + " wrongcase-windows-darwin",
+			ExistsBefore: "APRICOT",
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Success:      true,
+			OSes:         []OS{Windows, Darwin},
 		})
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " wrongcase-linux",
-			CreateFile: "APRICOT",
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Error:      os.IsNotExist,
-			OSes:       []OS{Linux},
+			Name:         variant.name + " wrongcase-linux",
+			ExistsBefore: "APRICOT",
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Error:        os.IsNotExist,
+			OSes:         []OS{Linux},
 		})
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " rightcase",
-			CreateFile: "apricot",
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Success:    true,
+			Name:         variant.name + " rightcase",
+			ExistsBefore: "apricot",
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Success:      true,
 		})
 	}
 
@@ -189,28 +192,102 @@ func listTestCases() []TestCase {
 
 	for _, variant := range screwStatVariants {
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " nonexistent",
-			CreateFile: None,
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Error:      os.IsNotExist,
+			Name:         variant.name + " nonexistent",
+			ExistsBefore: None,
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Error:        os.IsNotExist,
 		})
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " wrongcase",
-			CreateFile: "APRICOT",
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Error:      ErrorIs(screw.ErrWrongCase),
-			OSes:       []OS{Windows, Darwin},
+			Name:         variant.name + " wrongcase",
+			ExistsBefore: "APRICOT",
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Error:        ErrorIs(screw.ErrWrongCase),
+			OSes:         []OS{Windows, Darwin},
 		})
 		testCases = append(testCases, TestCase{
-			Name:       variant.name + " rightcase",
-			CreateFile: "apricot",
-			PassFile:   "apricot",
-			Operation:  variant.op,
-			Success:    true,
+			Name:         variant.name + " rightcase",
+			ExistsBefore: "apricot",
+			Argument:     "apricot",
+			Operation:    variant.op,
+			Success:      true,
 		})
 	}
+
+	//==========================
+	// Create
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:         "os.Create nonexistent",
+		ExistsBefore: None,
+		Argument:     "apricot",
+		Operation:    OpCreate(os.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot"},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "os.Create wrongcase windows-darwin",
+		ExistsBefore: "APRICOT",
+		Argument:     "apricot",
+		Operation:    OpCreate(os.Create),
+		Success:      true,
+		ExistsAfter:  []string{"APRICOT"},
+		OSes:         []OS{Windows, Darwin},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "os.Create wrongcase linux",
+		ExistsBefore: "APRICOT",
+		Argument:     "apricot",
+		Operation:    OpCreate(os.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot", "APRICOT"},
+		OSes:         []OS{Linux},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "os.Create rightcase",
+		ExistsBefore: "apricot",
+		Argument:     "apricot",
+		Operation:    OpCreate(os.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:         "screw.Create nonexistent",
+		ExistsBefore: None,
+		Argument:     "apricot",
+		Operation:    OpCreate(screw.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot"},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "screw.Create wrongcase windows-darwin",
+		ExistsBefore: "APRICOT",
+		Argument:     "apricot",
+		Operation:    OpCreate(screw.Create),
+		Error:        ErrorIs(screw.ErrWrongCase),
+		ExistsAfter:  []string{"APRICOT"},
+		OSes:         []OS{Windows, Darwin},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "screw.Create wrongcase linux",
+		ExistsBefore: "APRICOT",
+		Argument:     "apricot",
+		Operation:    OpCreate(screw.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot", "APRICOT"},
+		OSes:         []OS{Linux},
+	})
+	testCases = append(testCases, TestCase{
+		Name:         "screw.Create rightcase",
+		ExistsBefore: "apricot",
+		Argument:     "apricot",
+		Operation:    OpCreate(screw.Create),
+		Success:      true,
+		ExistsAfter:  []string{"apricot"},
+	})
 
 	return testCases
 }
@@ -231,13 +308,13 @@ func Test_Semantics(t *testing.T) {
 			must(err)
 			defer os.RemoveAll(dir)
 
-			if tc.CreateFile != "" {
-				f, err := os.Create(filepath.Join(dir, tc.CreateFile))
+			if tc.ExistsBefore != "" {
+				f, err := os.Create(filepath.Join(dir, tc.ExistsBefore))
 				must(err)
 				must(f.Close())
 			}
 
-			success, error := tc.Operation(filepath.Join(dir, tc.PassFile))
+			success, error := tc.Operation(filepath.Join(dir, tc.Argument))
 
 			if tc.Success {
 				assert.True(success, "operation should succeed")
@@ -248,6 +325,11 @@ func Test_Semantics(t *testing.T) {
 				if error != nil {
 					assert.True(tc.Error(error))
 				}
+			}
+
+			for _, ea := range tc.ExistsAfter {
+				_, err := os.Stat(filepath.Join(dir, ea))
+				assert.NoError(err, "%s must exist after", ea)
 			}
 		})
 	}
