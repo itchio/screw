@@ -39,7 +39,7 @@ func Remove(name string) error {
 func IsActualCasing(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
-		return false, err
+		return false, os.ErrNotExist
 	}
 	return true, nil
 }
@@ -47,7 +47,7 @@ func IsActualCasing(path string) (bool, error) {
 func GetActualCasing(path string) (string, error) {
 	_, err := os.Stat(path)
 	if err != nil {
-		return "", err
+		return "", os.ErrNotExist
 	}
 	return path, nil
 }

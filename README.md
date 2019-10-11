@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/itchio/screw.svg?branch=master)](https://travis-ci.org/itchio/screw)
 [![Build status](https://ci.appveyor.com/api/projects/status/8ewv7fb7myyb14r9?svg=true)](https://ci.appveyor.com/project/fasterthanlime/screw)
 
+Requires Go 1.13+
+
 **What do we have?** case-preserving case-insensitive filesystems on Windows & macOS.
 
 **What do we want?** case-*sensible* semantics on Windows, macOS & Linux.
