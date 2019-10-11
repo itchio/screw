@@ -714,8 +714,7 @@ func listTestCases() []TestCase {
 		Argument:   "apricot",
 		Operation:  OpMkdir(screw.Mkdir),
 		Error:      ErrorIs(screw.ErrCaseConflict),
-		DirsAfter: []string{"APRICOT"},
-		AbsentAfter: []string{"apricot"},
+		DirsAfter:  []string{"APRICOT"},
 
 		FSKind: FSCaseInsensitive,
 	})
@@ -725,8 +724,8 @@ func listTestCases() []TestCase {
 		DirsBefore: []string{"APRICOT"},
 		Argument:   "apricot",
 		Operation:  OpMkdir(screw.Mkdir),
-		Success: true,
-		DirsAfter: []string{"APRICOT", "apricot"},
+		Success:    true,
+		DirsAfter:  []string{"APRICOT", "apricot"},
 
 		FSKind: FSCaseSensitive,
 	})
@@ -829,12 +828,12 @@ func listTestCases() []TestCase {
 	})
 
 	testCases = append(testCases, TestCase{
-		Name:        "os.MkdirAll/wrongcaseparent",
-		DirsBefore:  []string{"FOO"},
-		Argument:    "foo/bar",
-		Operation:   OpMkdir(os.MkdirAll),
-		Success: true,
-		DirsAfter: []string{"FOO", "foo/bar"},
+		Name:       "os.MkdirAll/wrongcaseparent",
+		DirsBefore: []string{"FOO"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(os.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"FOO", "foo/bar"},
 
 		FSKind: FSCaseSensitive,
 	})
@@ -865,13 +864,13 @@ func listTestCases() []TestCase {
 
 		FSKind: FSCaseInsensitive,
 	})
-	
+
 	testCases = append(testCases, TestCase{
 		Name:       "screw.MkdirAll/wrongcase",
 		DirsBefore: []string{"APRICOT"},
 		Argument:   "apricot",
 		Operation:  OpMkdir(screw.MkdirAll),
-		Success: true,
+		Success:    true,
 		DirsAfter:  []string{"apricot", "APRICOT"},
 
 		FSKind: FSCaseSensitive,
@@ -906,12 +905,12 @@ func listTestCases() []TestCase {
 	})
 
 	testCases = append(testCases, TestCase{
-		Name:        "screw.MkdirAll/wrongcaseparent",
-		DirsBefore:  []string{"FOO"},
-		Argument:    "foo/bar",
-		Operation:   OpMkdir(screw.MkdirAll),
-		Success: true,
-		DirsAfter: []string{"FOO", "foo/bar"},
+		Name:       "screw.MkdirAll/wrongcaseparent",
+		DirsBefore: []string{"FOO"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"FOO", "foo/bar"},
 
 		FSKind: FSCaseSensitive,
 	})
