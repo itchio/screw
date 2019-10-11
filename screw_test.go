@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,79 +13,164 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_OpenStatLstat(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		return
-	}
+type OpFunc func(name string) (bool, error)
 
-	assert := assert.New(t)
-
-	tmpDir, err := ioutil.TempDir("", "screw-test-open")
-	must(err)
-
-	defer os.RemoveAll(tmpDir)
-
-	must(os.Mkdir(filepath.Join(tmpDir, "foo"), os.FileMode(755)))
-
-	f, err := os.Create(filepath.Join(tmpDir, "foo", "bar"))
-	must(err)
-	must(f.Close())
-
-	canOpen := func(open func(name string) (*os.File, error), name string) {
+func OpOpen(open func(name string) (*os.File, error)) OpFunc {
+	return func(name string) (bool, error) {
 		f, err := open(name)
-		must(err)
-		must(f.Close())
-	}
+		if err != nil {
+			return false, err
+		}
 
-	canStat := func(stat func(name string) (os.FileInfo, error), name string) {
+		f.Close()
+		return true, nil
+	}
+}
+
+func OpStat(stat func(name string) (os.FileInfo, error)) OpFunc {
+	return func(name string) (bool, error) {
 		_, err := stat(name)
-		must(err)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
+func OpRemove(remove func(name string) error) OpFunc {
+	return func(name string) (bool, error) {
+		err := remove(name)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
+type OS string
+
+const (
+	Windows OS = "windows"
+	Linux   OS = "linux"
+	Darwin  OS = "darwin"
+)
+
+const None = ""
+
+type TestCase struct {
+	// name of test
+	Name string
+
+	// name of file to create. if empty, no file is created
+	CreateFile string
+
+	// name of file to pass to operation
+	PassFile string
+
+	// operation, see OpOpen, OpStat, OpRemove
+	Operation OpFunc
+
+	// if true, operation must succeed
+	Success bool
+
+	// if non-nil, operation must fail and the returned error's
+	// string representation should contain the string representation
+	// of this error
+	Error func(err error) bool
+
+	// if empty, test on all OSes
+	OSes []OS
+}
+
+func (tc TestCase) AssertValid() {
+	if tc.PassFile == "" {
+		panic("invalid test: empty PassFile")
 	}
 
-	wontOpen := func(open func(name string) (*os.File, error), name string) {
-		_, err := open(name)
-		assert.Error(err)
-		if err == nil {
-			t.FailNow()
+	if tc.Success && tc.Error != nil {
+		panic("invalid test: both Success and Error specified")
+	}
+}
+
+func (tc TestCase) ShouldRun(t *testing.T) bool {
+	if len(tc.OSes) == 0 {
+		return true
+	}
+
+	for _, os := range tc.OSes {
+		if string(os) == runtime.GOOS {
+			return true
 		}
 	}
 
-	wontStat := func(stat func(name string) (os.FileInfo, error), name string) {
-		_, err := stat(name)
-		assert.Error(err)
-		if err == nil {
-			t.FailNow()
+	t.Logf("We're on (%s), skipping (%s)", runtime.GOOS, tc.Name)
+	return false
+}
+
+var testCases = []TestCase{
+	TestCase{
+		Name:       "os.Stat, non-existent file",
+		CreateFile: None,
+		PassFile:   "apricot",
+		Operation:  OpStat(os.Stat),
+		Error:      os.IsNotExist,
+	},
+	TestCase{
+		Name:       "screw.Stat, non-existent file",
+		CreateFile: None,
+		PassFile:   "apricot",
+		Operation:  OpStat(screw.Stat),
+		Error:      os.IsNotExist,
+	},
+	TestCase{
+		Name:       "os.Lstat, non-existent file",
+		CreateFile: None,
+		PassFile:   "apricot",
+		Operation:  OpStat(os.Lstat),
+		Error:      os.IsNotExist,
+	},
+	TestCase{
+		Name:       "screw.Lstat, non-existent file",
+		CreateFile: None,
+		PassFile:   "apricot",
+		Operation:  OpStat(screw.Lstat),
+		Error:      os.IsNotExist,
+	},
+}
+
+func Test_Semantics(t *testing.T) {
+	for _, tc := range testCases {
+		tc.AssertValid()
+		if !tc.ShouldRun(t) {
+			continue
 		}
-	}
 
-	joinPath := func(a ...string) string {
-		return strings.Join(a, `\`)
-	}
+		t.Run(tc.Name, func(t *testing.T) {
+			assert := assert.New(t)
 
-	paths := []string{
-		joinPath(tmpDir, "foo", "bar"),
-		joinPath(tmpDir, "foo", "BAR"),
-		joinPath(tmpDir, "FOO", "bar"),
-	}
+			dir, err := ioutil.TempDir("", "screw-tests")
+			must(err)
+			defer os.RemoveAll(dir)
 
-	// Windows can operate on any of these paths
-	for _, path := range paths {
-		canOpen(os.Open, path)
-		canStat(os.Stat, path)
-		canStat(os.Lstat, path)
-	}
+			if tc.CreateFile != "" {
+				f, err := os.Create(filepath.Join(dir, tc.CreateFile))
+				must(err)
+				must(f.Close())
+			}
 
-	// Screw wants the right one
-	for i, path := range paths {
-		if i == 0 {
-			canOpen(screw.Open, path)
-			canStat(screw.Stat, path)
-			canStat(screw.Lstat, path)
-		} else {
-			wontOpen(screw.Open, path)
-			wontStat(screw.Stat, path)
-			wontStat(screw.Lstat, path)
-		}
+			success, error := tc.Operation(tc.PassFile)
+
+			if tc.Success {
+				assert.True(success, "operation should succeed")
+			}
+
+			if tc.Error != nil {
+				assert.NotNil(error)
+				if error != nil {
+					assert.True(tc.Error(error))
+				}
+			}
+		})
 	}
 }
 
