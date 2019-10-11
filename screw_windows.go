@@ -3,6 +3,7 @@
 package screw
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,10 +12,36 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func Rename(oldpath, newpath string) error {
-	err := doRename(oldpath, newpath)
+func Mkdir(name string, perm os.FileMode) error {
+	wrap := mkwrap("screw.Mkdir", name)
+
+	err := os.Mkdir(name, perm)
 	if err != nil {
 		return err
+	}
+
+	actualCase, err := IsActualCasing(name)
+	if err != nil {
+		return wrap(err)
+	}
+	if !actualCase {
+		return wrap(ErrCaseConflict)
+	}
+	return nil
+}
+
+func MkdirAll(name string, perm os.FileMode) error {
+	wrap := mkwrap("screw.MkdirAll", name)
+
+	return wrap(errors.New("stub!"))
+}
+
+func Rename(oldpath, newpath string) error {
+	wrap := mkwrap("screw.Rename", oldpath)
+
+	err := doRename(oldpath, newpath)
+	if err != nil {
+		return wrap(err)
 	}
 
 	// casing changed?
@@ -22,11 +49,7 @@ func Rename(oldpath, newpath string) error {
 		// was it changed properly?
 		isActual, err := IsActualCasing(newpath)
 		if err != nil {
-			return &os.PathError{
-				Op:   "screw.Rename",
-				Path: newpath,
-				Err:  ErrWrongCase,
-			}
+			return wrap(err)
 		}
 
 		if isActual {
@@ -40,12 +63,12 @@ func Rename(oldpath, newpath string) error {
 			if err != nil {
 				// here is an awkward place to return an error, but
 				// if anyone has a better idea, I'm listening.. :(
-				return err
+				return wrap(err)
 			}
 
 			err = doRename(tmppath, newpath)
 			if err != nil {
-				return err
+				return wrap(err)
 			}
 
 			return nil
@@ -75,58 +98,119 @@ func doRename(oldpath, newpath string) error {
 }
 
 func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	wrap := mkwrap("screw.OpenFile", name)
+
 	actualCasing, err := IsActualCasing(name)
 	if err != nil {
 		if os.IsNotExist(err) && (flag&os.O_CREATE) > 0 {
 			// that's ok
 		} else {
-			return nil, err
+			return nil, wrap(err)
 		}
 	} else {
 		if !actualCasing {
-			return nil, &os.PathError{
-				Op:   "screw.OpenFile",
-				Path: name,
-				Err:  ErrWrongCase,
+			if (flag & os.O_CREATE) > 0 {
+				return nil, wrap(ErrCaseConflict)
+			} else {
+				return nil, wrap(os.ErrNotExist)
 			}
 		}
 	}
 
-	return os.OpenFile(name, flag, perm)
+	f, err := os.OpenFile(name, flag, perm)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return f, nil
 }
 
 func Stat(name string) (os.FileInfo, error) {
+	wrap := mkwrap("screw.Stat", name)
+
 	actualCasing, err := IsActualCasing(name)
 	if err != nil {
 		return nil, err
 	}
 
 	if !actualCasing {
-		return nil, &os.PathError{
-			Op:   "screw.Stat",
-			Path: name,
-			Err:  ErrWrongCase,
-		}
+		return nil, wrap(os.ErrNotExist)
 	}
 
-	return os.Stat(name)
+	stats, err := os.Stat(name)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return stats, nil
 }
 
 func Lstat(name string) (os.FileInfo, error) {
+	wrap := mkwrap("screw.Lstat", name)
+
 	actualCasing, err := IsActualCasing(name)
 	if err != nil {
 		return nil, err
 	}
 
 	if !actualCasing {
-		return nil, &os.PathError{
-			Op:   "screw.Stat",
-			Path: name,
-			Err:  ErrWrongCase,
-		}
+		return nil, wrap(os.ErrNotExist)
 	}
 
-	return os.Lstat(name)
+	stats, err := os.Lstat(name)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return stats, nil
+}
+
+func RemoveAll(name string) error {
+	wrap := mkwrap("screw.RemoveAll", name)
+
+	isActual, err := IsActualCasing(name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// neither "apricot", "APRICOT", etc. exist
+			return nil
+		}
+		return wrap(err)
+	}
+
+	if !isActual {
+		// asked to remove "apricot" but "APRICOT" exists, consider already removed
+		return nil
+	}
+
+	// accepting to try and remove "apricot" and all its children
+	err = os.RemoveAll(name)
+	if err != nil {
+		return wrap(err)
+	}
+	return nil
+}
+
+func Remove(name string) error {
+	wrap := mkwrap("screw.Remove", name)
+
+	isActual, err := IsActualCasing(name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// neither "apricot", "APRICOT", etc. exist
+			return wrap(os.ErrNotExist)
+		}
+		return (err)
+	}
+
+	if !isActual {
+		// asked to remove "apricot" but "APRICOT" (or another case variant)
+		// exists, so, can't remove "apricot" because it doesn't exist
+		return wrap(os.ErrNotExist)
+	}
+
+	// accepting to try and remove "apricot"
+	err = os.Remove(name)
+	if err != nil {
+		return wrap(err)
+	}
+	return nil
 }
 
 func IsActualCasing(path string) (bool, error) {
@@ -175,5 +259,19 @@ func isActualCasing(path string) (bool, error) {
 func debugf(f string, arg ...interface{}) {
 	if DEBUG {
 		fmt.Printf("[screw] %s\n", fmt.Sprintf(f, arg...))
+	}
+}
+
+func mkwrap(op string, path string) func(err error) error {
+	return func(err error) error {
+		return wrap(err, op, path)
+	}
+}
+
+func wrap(err error, op string, path string) error {
+	return &os.PathError{
+		Op:   op,
+		Path: path,
+		Err:  err,
 	}
 }

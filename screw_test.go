@@ -66,22 +66,34 @@ func OpRemove(remove func(name string) error) OpFunc {
 	}
 }
 
-type OS string
+type FSKind string
 
 const (
-	Windows OS = "windows"
-	Linux   OS = "linux"
-	Darwin  OS = "darwin"
+	FSAny             FSKind = ""
+	FSCaseSensitive   FSKind = "sensitive"
+	FSCaseInsensitive FSKind = "insensitive"
 )
 
-const None = ""
+func (fsk FSKind) String() string {
+	switch fsk {
+	case FSCaseSensitive:
+		return "sensitive-fs"
+	case FSCaseInsensitive:
+		return "insensitive-fs"
+	default:
+		return "any-fs"
+	}
+}
 
 type TestCase struct {
 	// name of test
 	Name string
 
-	// name of file to create. if empty, no file is created
-	ExistsBefore string
+	// Dirs to create before this call
+	DirsBefore []string
+
+	// Files to create before this call
+	FilesBefore []string
 
 	// name of file to pass to operation
 	Argument string
@@ -97,11 +109,19 @@ type TestCase struct {
 	// of this error
 	Error func(err error) bool
 
-	// File names that must exist after this call
-	ExistsAfter []string
+	// Files that must exist after this call
+	// Note that existence will be checked ignoring case on Windows & Darwin
+	FilesAfter []string
+
+	// Dirs that must exist after this call
+	// Note that existence will be checked ignoring case on Windows & Darwin
+	DirsAfter []string
+
+	// Files/dirs that must *not* exist after this call
+	AbsentAfter []string
 
 	// if empty, test on all OSes
-	OSes []OS
+	FSKind FSKind
 }
 
 func (tc TestCase) AssertValid() {
@@ -112,19 +132,21 @@ func (tc TestCase) AssertValid() {
 	if tc.Success && tc.Error != nil {
 		panic("invalid test: both Success and Error specified")
 	}
+
+	if !tc.Success && tc.Error == nil {
+		panic("invalid test: neither Success nor Error specified")
+	}
 }
 
 func (tc TestCase) ShouldRun(t *testing.T) bool {
-	if len(tc.OSes) == 0 {
+	switch tc.FSKind {
+	case FSCaseInsensitive:
+		return runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+	case FSCaseSensitive:
+		return runtime.GOOS == "linux"
+	default:
 		return true
 	}
-
-	for _, os := range tc.OSes {
-		if string(os) == runtime.GOOS {
-			return true
-		}
-	}
-	return false
 }
 
 func listTestCases() []TestCase {
@@ -134,6 +156,10 @@ func listTestCases() []TestCase {
 		name string
 		op   OpFunc
 	}
+
+	//==========================
+	// Stat, Lstat, Open
+	//==========================
 
 	osVariants := []opVariant{
 		{
@@ -152,34 +178,33 @@ func listTestCases() []TestCase {
 
 	for _, variant := range osVariants {
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " nonexistent",
-			ExistsBefore: None,
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Error:        os.IsNotExist,
+			Name:      variant.name + "/nonexistent",
+			Argument:  "apricot",
+			Operation: variant.op,
+			Error:     os.IsNotExist,
 		})
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " wrongcase-windows-darwin",
-			ExistsBefore: "APRICOT",
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Success:      true,
-			OSes:         []OS{Windows, Darwin},
+			Name:        variant.name + "/mixedcase",
+			FilesBefore: []string{"APRICOT"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Success:     true,
+			FSKind:      FSCaseInsensitive,
 		})
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " wrongcase-linux",
-			ExistsBefore: "APRICOT",
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Error:        os.IsNotExist,
-			OSes:         []OS{Linux},
+			Name:        variant.name + "/wrongcase",
+			FilesBefore: []string{"APRICOT"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Error:       os.IsNotExist,
+			FSKind:      FSCaseSensitive,
 		})
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " rightcase",
-			ExistsBefore: "apricot",
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Success:      true,
+			Name:        variant.name + "/rightcase",
+			FilesBefore: []string{"apricot"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Success:     true,
 		})
 	}
 
@@ -200,26 +225,33 @@ func listTestCases() []TestCase {
 
 	for _, variant := range screwVariants {
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " nonexistent",
-			ExistsBefore: None,
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Error:        os.IsNotExist,
+			Name:      variant.name + "/nonexistent",
+			Argument:  "apricot",
+			Operation: variant.op,
+			Error:     os.IsNotExist,
 		})
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " wrongcase",
-			ExistsBefore: "APRICOT",
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Error:        ErrorIs(screw.ErrWrongCase),
-			OSes:         []OS{Windows, Darwin},
+			Name:        variant.name + "/mixedcase",
+			FilesBefore: []string{"APRICOT"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Error:       os.IsNotExist,
+			FSKind:      FSCaseInsensitive,
 		})
 		testCases = append(testCases, TestCase{
-			Name:         variant.name + " rightcase",
-			ExistsBefore: "apricot",
-			Argument:     "apricot",
-			Operation:    variant.op,
-			Success:      true,
+			Name:        variant.name + "/wrongcase",
+			FilesBefore: []string{"APRICOT"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Error:       os.IsNotExist,
+			FSKind:      FSCaseSensitive,
+		})
+		testCases = append(testCases, TestCase{
+			Name:        variant.name + "/rightcase",
+			FilesBefore: []string{"apricot"},
+			Argument:    "apricot",
+			Operation:   variant.op,
+			Success:     true,
 		})
 	}
 
@@ -228,73 +260,199 @@ func listTestCases() []TestCase {
 	//==========================
 
 	testCases = append(testCases, TestCase{
-		Name:         "os.Create nonexistent",
-		ExistsBefore: None,
-		Argument:     "apricot",
-		Operation:    OpCreate(os.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot"},
+		Name:       "os.Create/nonexistent",
+		Argument:   "apricot",
+		Operation:  OpCreate(os.Create),
+		Success:    true,
+		FilesAfter: []string{"apricot"},
 	})
 	testCases = append(testCases, TestCase{
-		Name:         "os.Create wrongcase windows-darwin",
-		ExistsBefore: "APRICOT",
-		Argument:     "apricot",
-		Operation:    OpCreate(os.Create),
-		Success:      true,
-		ExistsAfter:  []string{"APRICOT"},
-		OSes:         []OS{Windows, Darwin},
+		Name:        "os.Create/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpCreate(os.Create),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT"},
+		FSKind:      FSCaseInsensitive,
 	})
 	testCases = append(testCases, TestCase{
-		Name:         "os.Create wrongcase linux",
-		ExistsBefore: "APRICOT",
-		Argument:     "apricot",
-		Operation:    OpCreate(os.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot", "APRICOT"},
-		OSes:         []OS{Linux},
+		Name:        "os.Create/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpCreate(os.Create),
+		Success:     true,
+		FilesAfter:  []string{"apricot", "APRICOT"},
+		FSKind:      FSCaseSensitive,
 	})
 	testCases = append(testCases, TestCase{
-		Name:         "os.Create rightcase",
-		ExistsBefore: "apricot",
-		Argument:     "apricot",
-		Operation:    OpCreate(os.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot"},
+		Name:        "os.Create/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpCreate(os.Create),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
+	})
+	testCases = append(testCases, TestCase{
+		Name:       "screw.Create/nonexistent",
+		Argument:   "apricot",
+		Operation:  OpCreate(screw.Create),
+		Success:    true,
+		FilesAfter: []string{"apricot"},
+	})
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Create/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpCreate(screw.Create),
+		Error:       ErrorIs(screw.ErrCaseConflict),
+		FilesAfter:  []string{"APRICOT"},
+		FSKind:      FSCaseInsensitive,
+	})
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Create/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpCreate(screw.Create),
+		Success:     true,
+		FilesAfter:  []string{"apricot", "APRICOT"},
+		FSKind:      FSCaseSensitive,
+	})
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Create/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpCreate(screw.Create),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
+	})
+
+	//==========================
+	// Remove
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.Remove/nonexistent",
+		Argument:  "apricot",
+		Operation: OpRemove(os.Remove),
+		Error:     os.IsNotExist,
 	})
 
 	testCases = append(testCases, TestCase{
-		Name:         "screw.Create nonexistent",
-		ExistsBefore: None,
-		Argument:     "apricot",
-		Operation:    OpCreate(screw.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot"},
+		Name:        "os.Remove/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.Remove),
+		Success:     true,
+		AbsentAfter: []string{"APRICOT"},
+		FSKind:      FSCaseInsensitive,
 	})
+
 	testCases = append(testCases, TestCase{
-		Name:         "screw.Create wrongcase windows-darwin",
-		ExistsBefore: "APRICOT",
-		Argument:     "apricot",
-		Operation:    OpCreate(screw.Create),
-		Error:        ErrorIs(screw.ErrWrongCase),
-		ExistsAfter:  []string{"APRICOT"},
-		OSes:         []OS{Windows, Darwin},
+		Name:        "os.Remove/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.Remove),
+		Error:       os.IsNotExist,
+		FSKind:      FSCaseSensitive,
 	})
+
 	testCases = append(testCases, TestCase{
-		Name:         "screw.Create wrongcase linux",
-		ExistsBefore: "APRICOT",
-		Argument:     "apricot",
-		Operation:    OpCreate(screw.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot", "APRICOT"},
-		OSes:         []OS{Linux},
+		Name:        "os.Remove/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.Remove),
+		Success:     true,
+		AbsentAfter: []string{"apricot"},
 	})
+
 	testCases = append(testCases, TestCase{
-		Name:         "screw.Create rightcase",
-		ExistsBefore: "apricot",
-		Argument:     "apricot",
-		Operation:    OpCreate(screw.Create),
-		Success:      true,
-		ExistsAfter:  []string{"apricot"},
+		Name:      "screw.Remove/nonexistent",
+		Argument:  "apricot",
+		Operation: OpRemove(screw.Remove),
+		Error:     os.IsNotExist,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Remove/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpRemove(screw.Remove),
+		Error:       os.IsNotExist,
+		FilesAfter:  []string{"APRICOT"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Remove/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpRemove(screw.Remove),
+		Success:     true,
+		AbsentAfter: []string{"apricot"},
+	})
+
+	//==========================
+	// RemoveAll
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.RemoveAll/nonexistent",
+		Argument:  "apricot",
+		Operation: OpRemove(os.RemoveAll),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.RemoveAll/mixedcase",
+		FilesBefore: []string{"APRICOT/README"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.RemoveAll),
+		AbsentAfter: []string{"APRICOT/README", "APRICOT"},
+		Success:     true,
+		FSKind:      FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.RemoveAll/wrongcase",
+		FilesBefore: []string{"APRICOT/README"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.RemoveAll),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT/README"},
+		FSKind:      FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.RemoveAll/rightcase",
+		FilesBefore: []string{"apricot/README"},
+		Argument:    "apricot",
+		Operation:   OpRemove(os.RemoveAll),
+		AbsentAfter: []string{"apricot/README", "apricot"},
+		Success:     true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.RemoveAll/nonexistent",
+		Argument:  "apricot",
+		Operation: OpRemove(screw.RemoveAll),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.RemoveAll/wrongcase",
+		FilesBefore: []string{"APRICOT/README"},
+		Argument:    "apricot",
+		Operation:   OpRemove(screw.RemoveAll),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT/README"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.RemoveAll/rightcase",
+		FilesBefore: []string{"apricot/README"},
+		Argument:    "apricot",
+		Operation:   OpRemove(screw.RemoveAll),
+		AbsentAfter: []string{"apricot/README", "apricot"},
+		Success:     true,
 	})
 
 	return testCases
@@ -309,15 +467,25 @@ func Test_Semantics(t *testing.T) {
 			continue
 		}
 
-		t.Run(tc.Name, func(t *testing.T) {
+		fullName := tc.Name + "/" + tc.FSKind.String()
+
+		t.Run(fullName, func(t *testing.T) {
 			assert := assert.New(t)
 
 			dir, err := ioutil.TempDir("", "screw-tests")
 			must(err)
 			defer os.RemoveAll(dir)
 
-			if tc.ExistsBefore != "" {
-				f, err := os.Create(filepath.Join(dir, tc.ExistsBefore))
+			for _, name := range tc.DirsBefore {
+				fullName := filepath.Join(dir, name)
+				must(os.MkdirAll(fullName, 0o755))
+			}
+
+			for _, name := range tc.FilesBefore {
+				fullName := filepath.Join(dir, name)
+				must(os.MkdirAll(filepath.Dir(fullName), 0o755))
+
+				f, err := os.Create(fullName)
 				must(err)
 				must(f.Close())
 			}
@@ -331,13 +499,25 @@ func Test_Semantics(t *testing.T) {
 			if tc.Error != nil {
 				assert.NotNil(error)
 				if error != nil {
-					assert.True(tc.Error(error))
+					assert.True(tc.Error(error), "error must pass test function")
 				}
 			}
 
-			for _, ea := range tc.ExistsAfter {
-				_, err := os.Stat(filepath.Join(dir, ea))
+			for _, ea := range tc.FilesAfter {
+				stats, err := os.Stat(filepath.Join(dir, ea))
 				assert.NoError(err, "%s must exist after", ea)
+				assert.True(stats.Mode().IsRegular(), "%s must be a regular file after", ea)
+			}
+
+			for _, ea := range tc.DirsAfter {
+				stats, err := os.Stat(filepath.Join(dir, ea))
+				assert.NoError(err, "%s must exist after", ea)
+				assert.True(stats.IsDir(), "%s must be a directory after", ea)
+			}
+
+			for _, ea := range tc.AbsentAfter {
+				_, err := os.Stat(filepath.Join(dir, ea))
+				assert.True(err != nil, "%s must be absent after", ea)
 			}
 		})
 	}
