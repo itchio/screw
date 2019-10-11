@@ -977,13 +977,17 @@ func Test_Semantics(t *testing.T) {
 			for _, ea := range tc.FilesAfter {
 				stats, err := os.Stat(filepath.Join(dir, ea))
 				assert.NoError(err, "%s must exist after", ea)
-				assert.True(stats.Mode().IsRegular(), "%s must be a regular file after", ea)
+				if stats != nil {
+					assert.True(stats.Mode().IsRegular(), "%s must be a regular file after", ea)
+				}
 			}
 
 			for _, ea := range tc.DirsAfter {
 				stats, err := os.Stat(filepath.Join(dir, ea))
 				assert.NoError(err, "%s must exist after", ea)
-				assert.True(stats.IsDir(), "%s must be a directory after", ea)
+				if stats != nil {
+					assert.True(stats.IsDir(), "%s must be a directory after", ea)
+				}
 			}
 
 			for _, ea := range tc.AbsentAfter {
