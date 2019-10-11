@@ -9,7 +9,7 @@
 
 Also, retry in case renaming/removing files fails because they're locked by an Antivirus.
 
-## Intro & rationale
+## Intro
 
 Throughout this documentation and code, we make the following assumptions:
 
@@ -95,10 +95,17 @@ First, note that core `screw` operations are implemented in `OpenFile`, so when 
 | Open(name)            | OpenFile(name, O_RDONLY, 0)                      |
 | Create(name)          | OpenFile(name, O_RDWR\|O_CREATE\|O_TRUNC, 0o666) |
 
+The tables in the rest of this document attribute meaning to some emojis:
+
+| Emoji | Meaning                  |
+|-------|--------------------------|
+| ✅   | Desirable return value    |
+| ⭕   | Undesirable return value  |
+| ❎   | Desirable error           |
+| ❌   | Undesirable error         |
+
 The table assume `"apricot"` is passed to all those functions, and that the code
 runs on a case-preserving, case-insensitive filesystem (Windows, macOS).
-
-See below for a legend.
 
 | Operation   | Existing file name    | `os` package (CPCI)    | `screw` package (CSBL)
 |-------------|-----------------------|------------------------|-----------------------
@@ -123,14 +130,44 @@ Destructive operations also behave differently:
 |             | "apricot"             | ✅ removes "apricot"   | 
 |             | "APRICOT"             | ⭕ removes "APRICOT"   | ✅ does nothing
 
-Legend:
+The mkdir family behaves differently:
 
-| Emoji | Meaning                  |
-|-------|--------------------------|
-| ✅   | Desirable return value    |
-| ⭕   | Undesirable return value  |
-| ❎   | Desirable error           |
-| ❌   | Undesirable error         |
+| Operation   | Existing dir name     | `os` package (CPCI)    | `screw` package (CSBL)
+|-------------|-----------------------|------------------------|-----------------------
+| Mkdir       | (none)                | ❎ mkdir "apricot"     | 
+|             | "apricot/"            | ✅ os.ErrExist         | 
+|             | "APRICOT/"            | ❌ os.ErrExist         | ❎ screw.ErrCaseConflict
+| MkdirAll    | (none)                | ✅ mkdir "apricot"     | 
+|             | "apricot/"            | ✅ does nothing        | 
+|             | "APRICOT/"            | ⭕ does nothing        | ❎ screw.ErrCaseConflict
+
+This also applies to subdirectories.
+
+This table passes "foo/bar" to `Mkdir` and `MkdirAll`:
+
+| Operation   | Existing dir name     | `os` package (CPCI)     | `screw` package (CSBL)
+|-------------|-----------------------|-------------------------|-----------------------
+| Mkdir       | (none)                | ❎ os.NotExist          | 
+|             | "foo/"                | ✅ mkdir "foo/bar"      |
+|             | "FOO/"                | ⭕ mkdir "FOO/bar"      | ❎ screw.ErrCaseConflict
+| MkdirAll    | (none)                | ✅ mkdir -p "foo/bar"   | 
+|             | "foo/"                | ✅ mkdir "foo/bar"      | 
+|             | "FOO/"                | ⭕ mkdir "FOO/bar"      | ❎ screw.ErrCaseConflict
+
+## Changes from `ioutil` package
+
+`ioutil.ReadFile` and `ioutil.ReadDir` are included in `screw`
+
+This table passes "apricot" to `ReadFile` and `ReadDir`
+
+| Operation   | Existing file/dir name| `ioutil` package (CPCI) | `screw` package (CSBL)
+|-------------|-----------------------|-------------------------|-----------------------
+| ReadFile    | (none)                | ❎ os.NotExist          | 
+|             | "apricot"             | ✅ read "apricot"       |
+|             | "APRICOT"             | ⭕ read "APRICOT"       | ❎ os.NotExist
+| ReadDir     | (none)                | ❎ os.NotExist          | 
+|             | "apricot/"            | ✅ list "apricot/"      | 
+|             | "APRICOT/"            | ⭕ list "APRICOT/"      | ❎ os.NotExist
 
 ## What about methods of *os.File ?
 
@@ -155,8 +192,6 @@ with `os.ErrNotFound`, so any `os.FileInfo` obtained via screw contains the exac
 Similarly `file.Readdir()` and `file.Readdirname()` can only be called on a file
 opened with its exact casing.
 
-## What about `ioutil` ?
-
 ## API Additions
 
 In addition to wrapping a lot of `os` functions, `screw` also provides these functions:
@@ -171,6 +206,9 @@ In addition to wrapping a lot of `os` functions, `screw` also provides these fun
 |               | "apricot"             | "APRICOT"                | ✅ "apricot"
 |               | "apricot/seed"        | "apricot/SEED"           | ✅ "apricot/seed" 
 |               | "apricot/seed"        | "APRICOT/seed"           | ✅ "apricot/seed"
+
+**Important note**: contrary to the simplified table above, `GetActualCase` returns absolute paths,
+not relative ones.
 
 ## Rename
 
@@ -188,6 +226,10 @@ that this wasn't always the case.
 Additionally, `screw.Rename` contains retry logic on Windows (to sidestep spurious AV file locking),
 and logic for older versions of Windows that don't support case-only renames.
 
+## UNC paths
+
+UNC paths (like `\\?\C:\Windows\`, `\\SOMEHOST\\Share`) are untested and unsupported in `screw` at the time of this writing.
+
 ## Error wrapping
 
 `screw` always wraps errors in a `*os.PathError`, to provide additional information as to which
@@ -204,8 +246,6 @@ Using `os.IsNotExist(e)` also works with `screw`-returned errors.
 On Windows, `screw` depends on `golang.org/x/sys/windows` to make the `FindFirstFile` syscall, instead of the legacy `syscall` package.
 
 ## Performance
-
-Performance wasn't measured.
 
 `screw` is expected to be slower than straight up `os`, especially since each
 `IsActualCase` / `GetActualCase` involve multiple calls to `FindFirstFile` on Windows.
