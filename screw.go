@@ -145,7 +145,7 @@ func Rename(oldpath, newpath string) error {
 	// case-only rename?
 	if strings.ToLower(oldpath) == strings.ToLower(newpath) {
 		// was it changed properly?
-		if TrueBaseName(oldpath) != filepath.Base(newpath) {
+		if TrueBaseName(newpath) != filepath.Base(newpath) {
 			tmppath := oldpath + fmt.Sprintf("_rename_%d", os.Getpid())
 			err := doRename(oldpath, tmppath)
 			if err != nil {
