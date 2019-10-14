@@ -1,4 +1,4 @@
-// +build !windows
+// +build darwin linux
 
 package screw
 
@@ -34,20 +34,4 @@ func RemoveAll(name string) error {
 
 func Remove(name string) error {
 	return os.Remove(name)
-}
-
-func IsActualCasing(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err != nil {
-		return false, os.ErrNotExist
-	}
-	return true, nil
-}
-
-func GetActualCasing(path string) (string, error) {
-	_, err := os.Stat(path)
-	if err != nil {
-		return "", os.ErrNotExist
-	}
-	return path, nil
 }

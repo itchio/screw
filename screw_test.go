@@ -998,7 +998,7 @@ func Test_Semantics(t *testing.T) {
 	}
 }
 
-func Test_IsActualCasing(t *testing.T) {
+func Test_TrueBaseName(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		t.Skip()
 	}
@@ -1015,43 +1015,39 @@ func Test_IsActualCasing(t *testing.T) {
 
 	var is bool
 
-	is, err = screw.IsActualCasing(reference)
-	assert.NoError(err)
+	is = screw.IsWrongCase(reference)
+	assert.False(is)
+
+	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "bar", "BAZ"))
 	assert.True(is)
 
-	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "bar", "BAZ"))
-	assert.NoError(err)
+	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "BAR", "baz"))
 	assert.False(is)
 
-	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "BAR", "baz"))
-	assert.NoError(err)
-	assert.False(is)
-
-	is, err = screw.IsActualCasing(filepath.Join(tmpDir, "foo", "bar", "woops"))
-	assert.Error(err)
+	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "bar", "woops"))
 	assert.False(is)
 
 	var actual string
 
-	actual, err = screw.GetActualCasing(reference)
+	actual = screw.TrueBaseName(reference)
 	assert.NoError(err)
-	assert.Equal(reference, actual)
+	assert.EqualValues("baz", actual)
 
-	actual, err = screw.GetActualCasing(strings.ToUpper(reference))
+	actual = screw.TrueBaseName(strings.ToUpper(reference))
 	assert.NoError(err)
-	assert.Equal(reference, actual)
+	assert.EqualValues("baz", actual)
 
-	actual, err = screw.GetActualCasing(strings.ToLower(reference))
+	actual = screw.TrueBaseName(strings.ToLower(reference))
 	assert.NoError(err)
-	assert.Equal(reference, actual)
+	assert.EqualValues("baz", actual)
 
-	actual, err = screw.GetActualCasing(filepath.Join(tmpDir, "FOO", "bar", "baz"))
+	actual = screw.TrueBaseName(filepath.Join(tmpDir, "FOO", "bar", "baz"))
 	assert.NoError(err)
-	assert.Equal(reference, actual)
+	assert.EqualValues("baz", actual)
 
-	actual, err = screw.GetActualCasing(filepath.Join(tmpDir, "foo", "BAR", "baz"))
+	actual = screw.TrueBaseName(filepath.Join(tmpDir, "foo", "BAR", "baz"))
 	assert.NoError(err)
-	assert.Equal(reference, actual)
+	assert.EqualValues("baz", actual)
 }
 
 func Test_RenameCase(t *testing.T) {
@@ -1066,9 +1062,9 @@ func Test_RenameCase(t *testing.T) {
 	must(err)
 	must(f.Close())
 
-	assert.True(screw.IsActualCasing(filepath.Join(tmpDir, "foobar")))
+	assert.EqualValues("foobar", screw.TrueBaseName(filepath.Join(tmpDir, "foobar")))
 	must(screw.Rename(filepath.Join(tmpDir, "foobar"), filepath.Join(tmpDir, "Foobar")))
-	assert.True(screw.IsActualCasing(filepath.Join(tmpDir, "Foobar")))
+	assert.EqualValues("Foobar", screw.TrueBaseName(filepath.Join(tmpDir, "Foobar")))
 }
 
 func Test_RenameLocked(t *testing.T) {

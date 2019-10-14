@@ -143,19 +143,6 @@ The mkdir family behaves differently:
 |             | "apricot/"            | ✅ does nothing        | 
 |             | "APRICOT/"            | ⭕ does nothing        | ❎ screw.ErrCaseConflict
 
-This also applies to subdirectories.
-
-This table passes "foo/bar" to `Mkdir` and `MkdirAll`:
-
-| Operation   | Existing dir name     | `os` package (CPCI)     | `screw` package (CSBL)
-|-------------|-----------------------|-------------------------|-----------------------
-| Mkdir       | (none)                | ❎ os.NotExist          | 
-|             | "foo/"                | ✅ mkdir "foo/bar"      |
-|             | "FOO/"                | ⭕ mkdir "FOO/bar"      | ❎ screw.ErrCaseConflict
-| MkdirAll    | (none)                | ✅ mkdir -p "foo/bar"   | 
-|             | "foo/"                | ✅ mkdir "foo/bar"      | 
-|             | "FOO/"                | ⭕ mkdir "FOO/bar"      | ❎ screw.ErrCaseConflict
-
 ## Changes from `ioutil` package
 
 `ioutil.ReadFile` and `ioutil.ReadDir` are included in `screw`
@@ -200,14 +187,11 @@ In addition to wrapping a lot of `os` functions, `screw` also provides these fun
 
 | Operation     | Existing file name    | Parameter                | Result
 |---------------|-----------------------|--------------------------|--------------------------
-| IsActualCase  | (none)                | "apricot"                | ❎ os.ErrNotExist
-|               | "APRICOT"             | "apricot"                | ✅ false
-|               | "apricot"             | "apricot"                | ✅ true
-| GetActualCase | (none)                | "apricot"                | ❎ os.ErrNotExist
+| TrueBaseName  | (none)                | "apricot"                | ✅ """
 |               | "apricot"             | "apricot"                | ✅ "apricot" 
 |               | "apricot"             | "APRICOT"                | ✅ "apricot"
 |               | "apricot/seed"        | "apricot/SEED"           | ✅ "apricot/seed" 
-|               | "apricot/seed"        | "APRICOT/seed"           | ✅ "apricot/seed"
+|               | "apricot/seed"        | "APRICOT/seed"           | ✅ "aAPRICOT/seed"
 
 **Important note**: contrary to the simplified table above, `GetActualCase` returns absolute paths,
 not relative ones.
@@ -249,7 +233,4 @@ On Windows, `screw` depends on `golang.org/x/sys/windows` to make the `FindFirst
 
 ## Performance
 
-`screw` is expected to be slower than straight up `os`, especially since each
-`IsActualCase` / `GetActualCase` involve multiple calls to `FindFirstFile` on Windows.
-
-However, performance isn't a goal of `screw`, correctness is.
+Performance isn't a goal of `screw`, correctness is.

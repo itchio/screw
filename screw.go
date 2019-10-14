@@ -1,6 +1,7 @@
 package screw
 
 import (
+	"path/filepath"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -25,15 +26,22 @@ func Symlink(oldname string, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
+func IsWrongCase(name string) bool {
+	name, err := filepath.Abs(name)
+	if err != nil {
+		return false
+	}
+	trueBase := TrueBaseName(name)
+	if trueBase != "" && trueBase != filepath.Base(name) {
+		return true
+	}
+	return false
+}
+
 func ReadDir(dirname string) ([]os.FileInfo, error) {
 	wrap := mkwrap("screw.ReadDir", dirname)
 
-	isActual, err := IsActualCasing(dirname)
-	if err != nil {
-		return nil, wrap(err)
-	}
-
-	if !isActual {
+	if IsWrongCase(dirname) {
 		return nil, wrap(os.ErrNotExist)
 	}
 
@@ -47,12 +55,7 @@ func ReadDir(dirname string) ([]os.FileInfo, error) {
 func ReadFile(filename string) ([]byte, error) {
 	wrap := mkwrap("screw.ReadFile", filename)
 
-	isActual, err := IsActualCasing(filename)
-	if err != nil {
-		return nil, wrap(err)
-	}
-
-	if !isActual {
+	if IsWrongCase(filename) {
 		return nil, wrap(os.ErrNotExist)
 	}
 
