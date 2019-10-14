@@ -377,13 +377,6 @@ func listTestCases() []TestCase {
 	//==========================
 
 	testCases = append(testCases, TestCase{
-		Name:      "os.Truncate/nonexistent",
-		Argument:  "apricot",
-		Operation: OpTruncate(os.Truncate),
-		Success:   true,
-	})
-
-	testCases = append(testCases, TestCase{
 		Name:        "os.Truncate/mixedcase",
 		FilesBefore: []string{"APRICOT"},
 		Argument:    "apricot",
@@ -395,33 +388,6 @@ func listTestCases() []TestCase {
 	})
 
 	testCases = append(testCases, TestCase{
-		Name:        "os.Truncate/wrongcase",
-		FilesBefore: []string{"APRICOT"},
-		Argument:    "apricot",
-		Operation:   OpTruncate(os.Truncate),
-		Success:     true,
-		FilesAfter:  []string{"APRICOT", "apricot"},
-
-		FSKind: FSCaseSensitive,
-	})
-
-	testCases = append(testCases, TestCase{
-		Name:        "os.Truncate/wrongcase",
-		FilesBefore: []string{"apricot"},
-		Argument:    "apricot",
-		Operation:   OpTruncate(os.Truncate),
-		Success:     true,
-		FilesAfter:  []string{"apricot"},
-	})
-
-	testCases = append(testCases, TestCase{
-		Name:      "screw.Truncate/nonexistent",
-		Argument:  "apricot",
-		Operation: OpTruncate(screw.Truncate),
-		Success:   true,
-	})
-
-	testCases = append(testCases, TestCase{
 		Name:        "screw.Truncate/mixedcase",
 		FilesBefore: []string{"APRICOT"},
 		Argument:    "apricot",
@@ -430,26 +396,6 @@ func listTestCases() []TestCase {
 		FilesAfter:  []string{"APRICOT"},
 
 		FSKind: FSCaseInsensitive,
-	})
-
-	testCases = append(testCases, TestCase{
-		Name:        "screw.Truncate/wrongcase",
-		FilesBefore: []string{"APRICOT"},
-		Argument:    "apricot",
-		Operation:   OpTruncate(screw.Truncate),
-		Success:     true,
-		FilesAfter:  []string{"APRICOT", "apricot"},
-
-		FSKind: FSCaseSensitive,
-	})
-
-	testCases = append(testCases, TestCase{
-		Name:        "screw.Truncate/wrongcase",
-		FilesBefore: []string{"apricot"},
-		Argument:    "apricot",
-		Operation:   OpTruncate(screw.Truncate),
-		Success:     true,
-		FilesAfter:  []string{"apricot"},
 	})
 
 	//==========================
