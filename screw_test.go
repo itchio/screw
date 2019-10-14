@@ -893,13 +893,14 @@ func listTestCases() []TestCase {
 		DirsAfter: []string{"foo", "foo/bar"},
 	})
 
+	// we don't check for wrong-case parents
 	testCases = append(testCases, TestCase{
-		Name:        "screw.MkdirAll/wrongcaseparent",
-		DirsBefore:  []string{"FOO"},
-		Argument:    "foo/bar",
-		Operation:   OpMkdir(screw.MkdirAll),
-		Error:       ErrorIs(screw.ErrCaseConflict),
-		AbsentAfter: []string{"FOO/bar"},
+		Name:       "screw.MkdirAll/wrongcaseparent",
+		DirsBefore: []string{"FOO"},
+		Argument:   "foo/bar",
+		Operation:  OpMkdir(screw.MkdirAll),
+		Success:    true,
+		DirsAfter:  []string{"FOO/bar"},
 
 		FSKind: FSCaseInsensitive,
 	})

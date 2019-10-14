@@ -27,6 +27,7 @@ char *GetCanonicalPath(char *cInputPath) {
 import "C"
 
 import (
+	"os"
 	"path/filepath"
 	"unsafe"
 )
@@ -41,4 +42,8 @@ func TrueBaseName(path string) string {
 
 	actualPath := C.GoString(cPath)
 	return filepath.Base(actualPath)
+}
+
+func doRename(oldpath, newpath string) error {
+	return os.Rename(oldpath, newpath)
 }

@@ -1,11 +1,12 @@
 package screw
 
 import (
-	"path/filepath"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 var DEBUG = os.Getenv("DEBUG_SCREW") == "1"
@@ -45,11 +46,7 @@ func ReadDir(dirname string) ([]os.FileInfo, error) {
 		return nil, wrap(os.ErrNotExist)
 	}
 
-	entries, err := ioutil.ReadDir(dirname)
-	if err != nil {
-		return nil, wrap(err)
-	}
-	return entries, nil
+	return ioutil.ReadDir(dirname)
 }
 
 func ReadFile(filename string) ([]byte, error) {
@@ -59,11 +56,114 @@ func ReadFile(filename string) ([]byte, error) {
 		return nil, wrap(os.ErrNotExist)
 	}
 
-	bs, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, wrap(err)
+	return ioutil.ReadFile(filename)
+}
+
+func Mkdir(name string, perm os.FileMode) error {
+	wrap := mkwrap("screw.Mkdir", name)
+
+	if IsWrongCase(name) {
+		return wrap(ErrCaseConflict)
 	}
-	return bs, nil
+
+	return os.Mkdir(name, perm)
+}
+
+func MkdirAll(name string, perm os.FileMode) error {
+	wrap := mkwrap("screw.MkdirAll", name)
+
+	if IsWrongCase(name) {
+		return wrap(ErrCaseConflict)
+	}
+
+	return os.MkdirAll(name, perm)
+}
+
+func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	wrap := mkwrap("screw.OpenFile", name)
+
+	if IsWrongCase(name) {
+		if (flag & os.O_CREATE) > 0 {
+			return nil, wrap(ErrCaseConflict)
+		} else {
+			return nil, wrap(os.ErrNotExist)
+		}
+	}
+
+	return os.OpenFile(name, flag, perm)
+}
+
+func Stat(name string) (os.FileInfo, error) {
+	wrap := mkwrap("screw.Stat", name)
+
+	if IsWrongCase(name) {
+		return nil, wrap(os.ErrNotExist)
+	}
+
+	return os.Stat(name)
+}
+
+func Lstat(name string) (os.FileInfo, error) {
+	wrap := mkwrap("screw.Lstat", name)
+
+	if IsWrongCase(name) {
+		return nil, wrap(os.ErrNotExist)
+	}
+
+	return os.Lstat(name)
+}
+
+func RemoveAll(name string) error {
+	if IsWrongCase(name) {
+		// asked to remove "apricot" but "APRICOT" (or another case variant)
+		// exists, consider already removed
+		return nil
+	}
+
+	return os.RemoveAll(name)
+}
+
+func Remove(name string) error {
+	wrap := mkwrap("screw.Remove", name)
+
+	if IsWrongCase(name) {
+		// asked to remove "apricot" but "APRICOT" (or another case variant)
+		// exists, so, can't remove "apricot" because it doesn't exist
+		return wrap(os.ErrNotExist)
+	}
+
+	// accepting to try and remove "apricot"
+	return os.Remove(name)
+}
+
+func Rename(oldpath, newpath string) error {
+	err := doRename(oldpath, newpath)
+	if err != nil {
+		return err
+	}
+
+	// case-only rename?
+	if strings.ToLower(oldpath) == strings.ToLower(newpath) {
+		// was it changed properly?
+		if TrueBaseName(oldpath) != filepath.Base(newpath) {
+			tmppath := oldpath + fmt.Sprintf("_rename_%d", os.Getpid())
+			err := doRename(oldpath, tmppath)
+			if err != nil {
+				// here is an awkward place to return an error, but
+				// if anyone has a better idea, I'm listening.. :(
+				return err
+			}
+
+			err = doRename(tmppath, newpath)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func debugf(f string, arg ...interface{}) {
@@ -79,9 +179,12 @@ func mkwrap(op string, path string) func(err error) error {
 }
 
 func wrap(err error, op string, path string) error {
-	return &os.PathError{
-		Op:   op,
-		Path: path,
-		Err:  err,
+	if err != nil {
+		return &os.PathError{
+			Op:   op,
+			Path: path,
+			Err:  err,
+		}
 	}
+	return err
 }

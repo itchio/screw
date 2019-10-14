@@ -12,3 +12,7 @@ func TrueBaseName(path string) string {
 	}
 	return path, nil
 }
+
+func doRename(oldpath, newpath string) error {
+	return os.Rename(oldpath, newpath)
+}

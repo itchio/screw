@@ -181,6 +181,23 @@ with `os.ErrNotFound`, so any `os.FileInfo` obtained via screw contains the exac
 Similarly `file.Readdir()` and `file.Readdirname()` can only be called on a file
 opened with its exact casing.
 
+## What if one of the *parent* folders has the wrong case?
+
+`screw` only checks the last path component, ie. the "base name", for performance
+and compatibility reasons.
+
+Checking the *entire path* has these problems:
+
+  * It's expensive to call `FindFirstFile` for every path element, like:
+    * `C:\Users\bob\AppData\Roaming\something`
+    * `C:\Users\bob\AppData\Roaming`
+    * `C:\Users\bob\AppData`
+    * `C:\Users\bob`
+    * `C:\Users`
+  * On macOS, the "reference path" might be different even if both have the true case, e.g.:
+    * `/tmp/foobar` has reference path:
+    * `/private/tmp/foobar`
+
 ## API Additions
 
 In addition to wrapping a lot of `os` functions, `screw` also provides these functions:
