@@ -1100,7 +1100,11 @@ func Test_TrueBaseName(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "screw-test-actual")
 	must(err)
 
-	reference := filepath.Join(tmpDir, "foo", "bar", "baz")
+	join := func (parts ...string) string {
+		parts = append([]string{tmpDir}, parts...)
+		return filepath.Join(parts...)
+	}
+	reference := join("foo", "bar", "baz")
 
 	err = os.MkdirAll(reference, 0o755)
 	must(err)
@@ -1110,13 +1114,13 @@ func Test_TrueBaseName(t *testing.T) {
 	is = screw.IsWrongCase(reference)
 	assert.False(is)
 
-	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "bar", "BAZ"))
+	is = screw.IsWrongCase(join("foo", "bar", "BAZ"))
 	assert.True(is)
 
-	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "BAR", "baz"))
+	is = screw.IsWrongCase(join("foo", "BAR", "baz"))
 	assert.False(is)
 
-	is = screw.IsWrongCase(filepath.Join(tmpDir, "foo", "bar", "woops"))
+	is = screw.IsWrongCase(join("foo", "bar", "woops"))
 	assert.False(is)
 
 	var actual string
@@ -1133,13 +1137,24 @@ func Test_TrueBaseName(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues("baz", actual)
 
-	actual = screw.TrueBaseName(filepath.Join(tmpDir, "FOO", "bar", "baz"))
+	actual = screw.TrueBaseName(join("FOO", "bar", "baz"))
 	assert.NoError(err)
 	assert.EqualValues("baz", actual)
 
-	actual = screw.TrueBaseName(filepath.Join(tmpDir, "foo", "BAR", "baz"))
+	actual = screw.TrueBaseName(join("foo", "BAR", "baz"))
 	assert.NoError(err)
 	assert.EqualValues("baz", actual)
+
+	if runtime.GOOS == "darwin" {
+		must(screw.WriteFile(join("file"), []byte("Some file"), 0644))
+		must(screw.Symlink(join("file"), join("link")))
+		assert.EqualValues("file", screw.TrueBaseName(join("file")))
+		assert.EqualValues("link", screw.TrueBaseName(join("link")))
+
+		dest, err := screw.Readlink(join("link"))
+		must(err)
+		assert.EqualValues("file", filepath.Base(dest))
+	}
 }
 
 func Test_RenameCase(t *testing.T) {

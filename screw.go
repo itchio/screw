@@ -15,6 +15,21 @@ var (
 	ErrCaseConflict = errors.New("a file with a different case already exists on disk")
 )
 
+// Returns true if `name` exists on disk but
+// with a different case.
+// Returns false in any other case.
+func IsWrongCase(name string) bool {
+	name, err := filepath.Abs(name)
+	if err != nil {
+		return false
+	}
+	trueBase := TrueBaseName(name)
+	if trueBase != "" && trueBase != filepath.Base(name) {
+		return true
+	}
+	return false
+}
+
 func Create(name string) (*os.File, error) {
 	return OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o666)
 }
@@ -27,16 +42,14 @@ func Symlink(oldname string, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
-func IsWrongCase(name string) bool {
-	name, err := filepath.Abs(name)
-	if err != nil {
-		return false
+func Readlink(name string) (string, error) {
+	wrap := mkwrap("screw.Readlink", name)
+
+	if IsWrongCase(name) {
+		return "", wrap(os.ErrNotExist)
 	}
-	trueBase := TrueBaseName(name)
-	if trueBase != "" && trueBase != filepath.Base(name) {
-		return true
-	}
-	return false
+
+	return os.Readlink(name)
 }
 
 func ReadDir(dirname string) ([]os.FileInfo, error) {
