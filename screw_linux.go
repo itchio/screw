@@ -6,11 +6,11 @@ import "os"
 
 // If `path` exists, and
 func TrueBaseName(path string) string {
-	_, err := os.Stat(path)
+	stats, err := os.Stat(path)
 	if err != nil {
-		return "", os.ErrNotExist
+		return ""
 	}
-	return path, nil
+	return stats.Name()
 }
 
 func doRename(oldpath, newpath string) error {
