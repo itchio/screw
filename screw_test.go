@@ -45,6 +45,16 @@ func OpReadFile(readfile func(name string) ([]byte, error)) OpFunc {
 	}
 }
 
+func OpWriteFile(writefile func(name string, data []byte, perm os.FileMode) error) OpFunc {
+	return func(name string) (bool, error) {
+		err := writefile(name, []byte("Hello"), 0o644)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
 func OpReadDir(readdir func(name string) ([]os.FileInfo, error)) OpFunc {
 	return func(name string) (bool, error) {
 		_, err := readdir(name)
@@ -351,6 +361,87 @@ func listTestCases() []TestCase {
 		Argument:    "apricot",
 		Operation:   OpReadFile(screw.ReadFile),
 		Success:     true,
+	})
+
+	//==========================
+	// WriteFile
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "ioutil.WriteFile/nonexistent",
+		Argument:  "apricot",
+		Operation: OpWriteFile(ioutil.WriteFile),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.WriteFile/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(ioutil.WriteFile),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.WriteFile/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(ioutil.WriteFile),
+		Success:     true,
+		FilesAfter:  []string{"apricot", "APRICOT"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "ioutil.WriteFile/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(ioutil.WriteFile),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:       "screw.WriteFile/nonexistent",
+		Argument:   "apricot",
+		Operation:  OpWriteFile(screw.WriteFile),
+		Success:    true,
+		FilesAfter: []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.WriteFile/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(screw.WriteFile),
+		Error:       ErrorIs(screw.ErrCaseConflict),
+		FilesAfter:  []string{"APRICOT"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.WriteFile/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(screw.WriteFile),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT", "apricot"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.WriteFile/rightcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpWriteFile(screw.WriteFile),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
 	})
 
 	//==========================

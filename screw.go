@@ -59,6 +59,16 @@ func ReadFile(filename string) ([]byte, error) {
 	return ioutil.ReadFile(filename)
 }
 
+func WriteFile(filename string, data []byte, perm os.FileMode) error {
+	wrap := mkwrap("screw.WriteFile", filename)
+
+	if IsWrongCase(filename) {
+		return wrap(ErrCaseConflict)
+	}
+
+	return ioutil.WriteFile(filename, data, perm)
+}
+
 func Mkdir(name string, perm os.FileMode) error {
 	wrap := mkwrap("screw.Mkdir", name)
 

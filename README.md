@@ -145,7 +145,7 @@ The mkdir family behaves differently:
 
 ## Changes from `ioutil` package
 
-`ioutil.ReadFile` and `ioutil.ReadDir` are included in `screw`
+`ioutil.ReadFile`, `ioutil.WriteFile` and `ioutil.ReadDir` are included in `screw`
 
 This table passes "apricot" to `ReadFile` and `ReadDir`
 
@@ -154,6 +154,9 @@ This table passes "apricot" to `ReadFile` and `ReadDir`
 | ReadFile    | (none)                | ❎ os.NotExist          | 
 |             | "apricot"             | ✅ read "apricot"       |
 |             | "APRICOT"             | ⭕ read "APRICOT"       | ❎ os.NotExist
+| WriteFile   | (none)                | ✅ create "apricot"     |
+|             | "apricot"             | ✅ overwrites "apricot" |
+|             | "APRICOT"             | ⭕ overwrites "apricot" | ❎ screw.ErrCaseConflict
 | ReadDir     | (none)                | ❎ os.NotExist          | 
 |             | "apricot/"            | ✅ list "apricot/"      | 
 |             | "APRICOT/"            | ⭕ list "APRICOT/"      | ❎ os.NotExist
