@@ -42,6 +42,16 @@ func Symlink(oldname string, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
+func Truncate(name string, size int64) error {
+	wrap := mkwrap("screw.Truncate", name)
+
+	if IsWrongCase(name) {
+		return wrap(ErrCaseConflict)
+	}
+
+	return os.Truncate(name, size)
+}
+
 func Readlink(name string) (string, error) {
 	wrap := mkwrap("screw.Readlink", name)
 

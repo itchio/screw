@@ -120,6 +120,9 @@ runs on a case-preserving, case-insensitive filesystem (Windows, macOS).
 | Create      | (none)                | ✅ create "apricot"    | 
 |             | "apricot"             | ✅ truncate "apricot"  | 
 |             | "APRICOT"             | ⭕ truncate "APRICOT"  | ❎ screw.ErrCaseConflict
+| Truncate    | (none)                | ✅ create "apricot"    | 
+|             | "apricot"             | ✅ truncate "apricot"  | 
+|             | "APRICOT"             | ⭕ truncate "APRICOT"  | ❎ screw.ErrCaseConflict
 
 Destructive operations also behave differently:
 

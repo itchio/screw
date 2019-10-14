@@ -34,6 +34,15 @@ func OpOpen(open func(name string) (*os.File, error)) OpFunc {
 		return true, nil
 	}
 }
+func OpTruncate(truncate func(name string, size int64) error) OpFunc {
+	return func(name string) (bool, error) {
+		err := truncate(name, 0)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
 
 func OpReadFile(readfile func(name string) ([]byte, error)) OpFunc {
 	return func(name string) (bool, error) {
@@ -200,7 +209,7 @@ func listTestCases() []TestCase {
 	}
 
 	//==========================
-	// Stat, Lstat, Open
+	// Stat, Lstat, Open, Truncate
 	//==========================
 
 	osVariants := []opVariant{
@@ -213,7 +222,7 @@ func listTestCases() []TestCase {
 			op:   OpStat(os.Lstat),
 		},
 		{
-			name: "os.Open", // not technically a stat, but..
+			name: "os.Open",
 			op:   OpOpen(os.Open),
 		},
 	}
@@ -361,6 +370,86 @@ func listTestCases() []TestCase {
 		Argument:    "apricot",
 		Operation:   OpReadFile(screw.ReadFile),
 		Success:     true,
+	})
+
+	//==========================
+	// Truncate
+	//==========================
+
+	testCases = append(testCases, TestCase{
+		Name:      "os.Truncate/nonexistent",
+		Argument:  "apricot",
+		Operation: OpTruncate(os.Truncate),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.Truncate/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(os.Truncate),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.Truncate/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(os.Truncate),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT", "apricot"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "os.Truncate/wrongcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(os.Truncate),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:      "screw.Truncate/nonexistent",
+		Argument:  "apricot",
+		Operation: OpTruncate(screw.Truncate),
+		Success:   true,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Truncate/mixedcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(screw.Truncate),
+		Error:       ErrorIs(screw.ErrCaseConflict),
+		FilesAfter:  []string{"APRICOT"},
+
+		FSKind: FSCaseInsensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Truncate/wrongcase",
+		FilesBefore: []string{"APRICOT"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(screw.Truncate),
+		Success:     true,
+		FilesAfter:  []string{"APRICOT", "apricot"},
+
+		FSKind: FSCaseSensitive,
+	})
+
+	testCases = append(testCases, TestCase{
+		Name:        "screw.Truncate/wrongcase",
+		FilesBefore: []string{"apricot"},
+		Argument:    "apricot",
+		Operation:   OpTruncate(screw.Truncate),
+		Success:     true,
+		FilesAfter:  []string{"apricot"},
 	})
 
 	//==========================
@@ -1100,7 +1189,7 @@ func Test_TrueBaseName(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "screw-test-actual")
 	must(err)
 
-	join := func (parts ...string) string {
+	join := func(parts ...string) string {
 		parts = append([]string{tmpDir}, parts...)
 		return filepath.Join(parts...)
 	}
