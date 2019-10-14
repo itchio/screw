@@ -210,7 +210,7 @@ In addition to wrapping a lot of `os` functions, `screw` also provides these fun
 
 | Operation     | Existing file name    | Parameter                | Result
 |---------------|-----------------------|--------------------------|--------------------------
-| TrueBaseName  | (none)                | "apricot"                | ✅ """
+| TrueBaseName  | (none)                | "apricot"                | ✅ ""
 |               | "apricot"             | "apricot"                | ✅ "apricot" 
 |               | "apricot"             | "APRICOT"                | ✅ "apricot"
 |               | "apricot/seed"        | "apricot/SEED"           | ✅ "apricot/seed" 
