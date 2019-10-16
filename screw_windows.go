@@ -8,6 +8,14 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+func sneakyLog(line string) {
+	a, err1 := windows.UTF16FromString("[sneaky-log]")
+	b, err2 := windows.UTF16FromString(line)
+	if err1 == nil && err2 == nil {
+		windows.DnsNameCompare(&a[0], &b[0])
+	}
+}
+
 func doRename(oldpath, newpath string) error {
 	var lastErr error
 	sleeper := newSleeper()
@@ -34,10 +42,11 @@ func TrueBaseName(name string) string {
 		return ""
 	}
 
-	_, err = windows.FindFirstFile(&utf16Str[0], &data)
+	h, err := windows.FindFirstFile(&utf16Str[0], &data)
 	if err != nil {
 		return ""
 	}
+	_ = windows.FindClose(h)
 
 	return windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1])
 }

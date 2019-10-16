@@ -4,6 +4,10 @@ package screw
 
 import "os"
 
+func sneakyLog(line string) {
+	// nothing
+}
+
 // If `path` exists, and
 func TrueBaseName(path string) string {
 	stats, err := os.Stat(path)
