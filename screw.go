@@ -31,18 +31,22 @@ func IsWrongCase(name string) bool {
 }
 
 func Create(name string) (*os.File, error) {
+	debugf("screw.Create(%s)", name)
 	return OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o666)
 }
 
 func Open(name string) (*os.File, error) {
+	debugf("screw.Open(%s)", name)
 	return OpenFile(name, os.O_RDONLY, 0)
 }
 
 func Symlink(oldname string, newname string) error {
+	debugf("screw.Symlink(%s, %s)", oldname, newname)
 	return os.Symlink(oldname, newname)
 }
 
 func Truncate(name string, size int64) error {
+	debugf("screw.Truncate(%s, %d)", name, size)
 	wrap := mkwrap("screw.Truncate", name)
 
 	if IsWrongCase(name) {
@@ -53,6 +57,7 @@ func Truncate(name string, size int64) error {
 }
 
 func Readlink(name string) (string, error) {
+	debugf("screw.Readlink(%s)", name)
 	wrap := mkwrap("screw.Readlink", name)
 
 	if IsWrongCase(name) {
@@ -63,6 +68,7 @@ func Readlink(name string) (string, error) {
 }
 
 func ReadDir(dirname string) ([]os.FileInfo, error) {
+	debugf("screw.ReadDir(%s)", dirname)
 	wrap := mkwrap("screw.ReadDir", dirname)
 
 	if IsWrongCase(dirname) {
@@ -73,6 +79,7 @@ func ReadDir(dirname string) ([]os.FileInfo, error) {
 }
 
 func ReadFile(filename string) ([]byte, error) {
+	debugf("screw.ReadFile(%s)", filename)
 	wrap := mkwrap("screw.ReadFile", filename)
 
 	if IsWrongCase(filename) {
@@ -83,6 +90,7 @@ func ReadFile(filename string) ([]byte, error) {
 }
 
 func WriteFile(filename string, data []byte, perm os.FileMode) error {
+	debugf("screw.WriteFile(%s)", filename)
 	wrap := mkwrap("screw.WriteFile", filename)
 
 	if IsWrongCase(filename) {
@@ -93,6 +101,7 @@ func WriteFile(filename string, data []byte, perm os.FileMode) error {
 }
 
 func Mkdir(name string, perm os.FileMode) error {
+	debugf("screw.Mkdir(%s)", name)
 	wrap := mkwrap("screw.Mkdir", name)
 
 	if IsWrongCase(name) {
@@ -103,6 +112,7 @@ func Mkdir(name string, perm os.FileMode) error {
 }
 
 func MkdirAll(name string, perm os.FileMode) error {
+	debugf("screw.MkdirAll(%s)", name)
 	wrap := mkwrap("screw.MkdirAll", name)
 
 	if IsWrongCase(name) {
@@ -113,6 +123,7 @@ func MkdirAll(name string, perm os.FileMode) error {
 }
 
 func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	debugf("screw.OpenFile(%s, 0x%x, 0o%o)", name, flag, perm)
 	wrap := mkwrap("screw.OpenFile", name)
 
 	if IsWrongCase(name) {
@@ -127,6 +138,7 @@ func OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 }
 
 func Stat(name string) (os.FileInfo, error) {
+	debugf("screw.Stat(%s)", name)
 	wrap := mkwrap("screw.Stat", name)
 
 	if IsWrongCase(name) {
@@ -137,6 +149,7 @@ func Stat(name string) (os.FileInfo, error) {
 }
 
 func Lstat(name string) (os.FileInfo, error) {
+	debugf("screw.Lstat(%s)", name)
 	wrap := mkwrap("screw.Lstat", name)
 
 	if IsWrongCase(name) {
@@ -147,6 +160,7 @@ func Lstat(name string) (os.FileInfo, error) {
 }
 
 func RemoveAll(name string) error {
+	debugf("screw.RemoveAll(%s)", name)
 	if IsWrongCase(name) {
 		// asked to remove "apricot" but "APRICOT" (or another case variant)
 		// exists, consider already removed
@@ -157,6 +171,7 @@ func RemoveAll(name string) error {
 }
 
 func Remove(name string) error {
+	debugf("screw.Remove(%s)", name)
 	wrap := mkwrap("screw.Remove", name)
 
 	if IsWrongCase(name) {
@@ -170,6 +185,7 @@ func Remove(name string) error {
 }
 
 func Rename(oldpath, newpath string) error {
+	debugf("screw.Rename(%s, %s)", oldpath, newpath)
 	err := doRename(oldpath, newpath)
 	if err != nil {
 		return err
@@ -201,7 +217,9 @@ func Rename(oldpath, newpath string) error {
 
 func debugf(f string, arg ...interface{}) {
 	if DEBUG {
-		fmt.Printf("[screw] %s\n", fmt.Sprintf(f, arg...))
+		line := fmt.Sprintf(f, arg...)
+		fmt.Printf("[screw] %s\n", line)
+		sneakyLog(line)
 	}
 }
 

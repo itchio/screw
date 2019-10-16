@@ -32,6 +32,10 @@ import (
 	"unsafe"
 )
 
+func sneakyLog(line string) {
+	// nothing
+}
+
 // If `path` exists, and
 func TrueBaseName(path string) string {
 	cPath := C.GetCanonicalPath(C.CString(path))

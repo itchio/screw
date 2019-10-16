@@ -30,6 +30,7 @@ func Test_Forbidden_RemoveWhileOpen(t *testing.T) {
 	defer f.Close()
 
 	err = os.Remove(name)
+	t.Logf("Remove error: %v", err)
 	assert.Error(err)
 
 	pe, ok := err.(*os.PathError)
@@ -61,6 +62,7 @@ func Test_Forbidden_RemoveParentWhileOpen(t *testing.T) {
 	defer f.Close()
 
 	err = os.RemoveAll(parent)
+	t.Logf("RemoveAll error: %v", err)
 	assert.Error(err)
 
 	pe, ok := err.(*os.PathError)
