@@ -1,3 +1,5 @@
+// +build windows
+
 package screw_test
 
 import (
@@ -13,10 +15,6 @@ import (
 
 func Test_Forbidden_RemoveWhileOpen(t *testing.T) {
 	assert := assert.New(t)
-
-	if runtime.GOOS != "windows" {
-		t.Skip()
-	}
 
 	tmpdir, err := ioutil.TempDir("", "")
 	must(err)
@@ -43,10 +41,6 @@ func Test_Forbidden_RemoveWhileOpen(t *testing.T) {
 
 func Test_Forbidden_RemoveParentWhileOpen(t *testing.T) {
 	assert := assert.New(t)
-
-	if runtime.GOOS != "windows" {
-		t.Skip()
-	}
 
 	tmpdir, err := ioutil.TempDir("", "")
 	must(err)
