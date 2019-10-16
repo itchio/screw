@@ -42,10 +42,11 @@ func TrueBaseName(name string) string {
 		return ""
 	}
 
-	_, err = windows.FindFirstFile(&utf16Str[0], &data)
+	h, err := windows.FindFirstFile(&utf16Str[0], &data)
 	if err != nil {
 		return ""
 	}
+	_ = windows.FindClose(h)
 
 	return windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1])
 }
