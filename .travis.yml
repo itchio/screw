@@ -8,6 +8,3 @@ language: go
 
 go:
     - "1.13"
-
-script:
-    - go test ./...
