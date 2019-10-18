@@ -50,3 +50,7 @@ func TrueBaseName(name string) string {
 
 	return windows.UTF16ToString(data.FileName[:windows.MAX_PATH-1])
 }
+
+func IsCaseSensitiveFS() bool {
+	return true
+}

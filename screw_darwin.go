@@ -51,3 +51,7 @@ func TrueBaseName(path string) string {
 func doRename(oldpath, newpath string) error {
 	return os.Rename(oldpath, newpath)
 }
+
+func IsCaseSensitiveFS() bool {
+	return true
+}
