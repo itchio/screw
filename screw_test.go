@@ -1192,7 +1192,7 @@ func Test_TrueBaseName(t *testing.T) {
 	}
 }
 
-func Test_RenameCase(t *testing.T) {
+func Test_RenameCaseFile(t *testing.T) {
 	assert := assert.New(t)
 
 	tmpDir, err := ioutil.TempDir("", "screw-test-rename")
@@ -1207,6 +1207,26 @@ func Test_RenameCase(t *testing.T) {
 	assert.EqualValues("foobar", screw.TrueBaseName(filepath.Join(tmpDir, "foobar")))
 	must(screw.Rename(filepath.Join(tmpDir, "foobar"), filepath.Join(tmpDir, "Foobar")))
 	assert.EqualValues("Foobar", screw.TrueBaseName(filepath.Join(tmpDir, "Foobar")))
+}
+
+func Test_RenameCaseDir(t *testing.T) {
+	assert := assert.New(t)
+
+	tmpDir, err := ioutil.TempDir("", "screw-test-rename")
+	must(err)
+
+	defer os.RemoveAll(tmpDir)
+
+	err = os.MkdirAll(filepath.Join(tmpDir, "deeper", "and", "deeper"), 0o755)
+	must(err)
+
+	f, err := os.Create(filepath.Join(tmpDir, "deeper", "and", "deeper", "foobar"))
+	must(err)
+	must(f.Close())
+
+	assert.EqualValues("deeper", screw.TrueBaseName(filepath.Join(tmpDir, "deeper")))
+	must(screw.Rename(filepath.Join(tmpDir, "deeper"), filepath.Join(tmpDir, "DEEPER")))
+	assert.EqualValues("DEEPER", screw.TrueBaseName(filepath.Join(tmpDir, "deeper")))
 }
 
 func Test_RenameLocked(t *testing.T) {
