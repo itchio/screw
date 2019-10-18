@@ -1229,7 +1229,7 @@ func Test_RenameLocked(t *testing.T) {
 func Test_IsCaseSensitiveFS(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.EqualValues(runtime.GOOS != "Linux", screw.IsCaseSensitiveFS())
+	assert.EqualValues(runtime.GOOS != "Linux", screw.IsCaseInsensitiveFS())
 }
 
 func must(err error) {

@@ -17,7 +17,7 @@ func TrueBaseName(path string) string {
 	return stats.Name()
 }
 
-func IsCaseSensitiveFS() bool {
+func IsCaseInsensitiveFS() bool {
 	return false
 }
 
