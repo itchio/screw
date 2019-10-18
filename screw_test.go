@@ -1226,10 +1226,15 @@ func Test_RenameLocked(t *testing.T) {
 	must(screw.Rename(filepath.Join(tmpDir, "foobar"), filepath.Join(tmpDir, "something-else")))
 }
 
-func Test_IsCaseSensitiveFS(t *testing.T) {
+func Test_IsCaseInsensitiveFS(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.EqualValues(runtime.GOOS != "Linux", screw.IsCaseInsensitiveFS())
+	switch runtime.GOOS {
+	case "linux":
+		assert.False(screw.IsCaseInsensitiveFS())
+	default:
+		assert.True(screw.IsCaseInsensitiveFS())
+	}
 }
 
 func must(err error) {
