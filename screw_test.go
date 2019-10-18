@@ -1226,7 +1226,7 @@ func Test_RenameCaseDir(t *testing.T) {
 
 	assert.EqualValues("deeper", screw.TrueBaseName(filepath.Join(tmpDir, "deeper")))
 	must(screw.Rename(filepath.Join(tmpDir, "deeper"), filepath.Join(tmpDir, "DEEPER")))
-	assert.EqualValues("DEEPER", screw.TrueBaseName(filepath.Join(tmpDir, "deeper")))
+	assert.EqualValues("DEEPER", screw.TrueBaseName(filepath.Join(tmpDir, "DEEPER")))
 }
 
 func Test_RenameLocked(t *testing.T) {
