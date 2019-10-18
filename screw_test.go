@@ -1220,10 +1220,6 @@ func Test_RenameCaseDir(t *testing.T) {
 	err = os.MkdirAll(filepath.Join(tmpDir, "deeper", "and", "deeper"), 0o755)
 	must(err)
 
-	f, err := os.Create(filepath.Join(tmpDir, "deeper", "and", "deeper", "foobar"))
-	must(err)
-	must(f.Close())
-
 	assert.EqualValues("deeper", screw.TrueBaseName(filepath.Join(tmpDir, "deeper")))
 	must(screw.Rename(filepath.Join(tmpDir, "deeper"), filepath.Join(tmpDir, "DEEPER")))
 	assert.EqualValues("DEEPER", screw.TrueBaseName(filepath.Join(tmpDir, "DEEPER")))

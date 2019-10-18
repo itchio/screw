@@ -27,6 +27,7 @@ char *GetCanonicalPath(char *cInputPath) {
 import "C"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -49,7 +50,31 @@ func TrueBaseName(path string) string {
 }
 
 func doRename(oldpath, newpath string) error {
-	return os.Rename(oldpath, newpath)
+	err := os.Rename(oldpath, newpath)
+	if err != nil {
+		// on macOS, renaming "foo" to "FOO" is fine,
+		// but renaming "foo/" to "FOO/" fails with "file exists"
+		if os.IsExist(err) {
+			originalErr := err
+
+			tmppath := fmt.Sprintf("%s__rename_pid%d", oldpath, os.Getpid())
+
+			err = os.Rename(oldpath, tmppath)
+			if err != nil {
+				return originalErr
+			}
+			err = os.Rename(tmppath, newpath)
+			if err != nil {
+				// attempt to rollback, ignore returned error,
+				// because what else can we do at this point?
+				_ = os.Rename(tmppath, oldpath)
+			}
+			// two-stage rename worked!
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func IsCaseInsensitiveFS() bool {
