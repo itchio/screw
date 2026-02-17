@@ -1,10 +1,10 @@
 module github.com/itchio/screw
 
-go 1.24
+go 1.24.0
 
 require (
-	github.com/stretchr/testify v1.5.1
-	golang.org/x/sys v0.0.0-20200301153931-2f85c7ec1e52
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -13,5 +13,5 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
