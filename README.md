@@ -1,8 +1,6 @@
 # screw
 
-[![Build Status](https://travis-ci.org/itchio/screw.svg?branch=master)](https://travis-ci.org/itchio/screw)
-
-Requires Go 1.13+
+[![CI](https://github.com/itchio/screw/actions/workflows/ci.yml/badge.svg)](https://github.com/itchio/screw/actions/workflows/ci.yml)
 
 **What do we have?** case-preserving case-insensitive filesystems on Windows & macOS.
 
