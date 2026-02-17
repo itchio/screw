@@ -40,7 +40,10 @@ func sneakyLog(line string) {
 
 // If `path` exists, and
 func TrueBaseName(path string) string {
-	cPath := C.GetCanonicalPath(C.CString(path))
+	cInputPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cInputPath))
+
+	cPath := C.GetCanonicalPath(cInputPath)
 	if uintptr(unsafe.Pointer(cPath)) == 0 {
 		return ""
 	}
