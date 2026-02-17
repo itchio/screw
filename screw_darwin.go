@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package screw
 
@@ -28,11 +27,16 @@ char *GetCanonicalPath(char *cInputPath) {
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"unsafe"
 )
+
+// osRename is a test seam so darwin-only tests can deterministically exercise
+// fallback and rollback branches in doRename without relying on filesystem quirks.
+var osRename = os.Rename
 
 func sneakyLog(line string) {
 	// nothing
@@ -54,7 +58,7 @@ func TrueBaseName(path string) string {
 }
 
 func doRename(oldpath, newpath string) error {
-	err := os.Rename(oldpath, newpath)
+	err := osRename(oldpath, newpath)
 	if err != nil {
 		// on macOS, renaming "foo" to "FOO" is fine,
 		// but renaming "foo/" to "FOO/" fails with "file exists"
@@ -63,15 +67,19 @@ func doRename(oldpath, newpath string) error {
 
 			tmppath := fmt.Sprintf("%s__rename_pid%d", oldpath, os.Getpid())
 
-			err = os.Rename(oldpath, tmppath)
+			err = osRename(oldpath, tmppath)
 			if err != nil {
 				return originalErr
 			}
-			err = os.Rename(tmppath, newpath)
+			err = osRename(tmppath, newpath)
 			if err != nil {
 				// attempt to rollback, ignore returned error,
 				// because what else can we do at this point?
-				_ = os.Rename(tmppath, oldpath)
+				rollbackErr := osRename(tmppath, oldpath)
+				if rollbackErr != nil {
+					return errors.Join(err, rollbackErr)
+				}
+				return err
 			}
 			// two-stage rename worked!
 			return nil
