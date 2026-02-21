@@ -246,15 +246,15 @@ func Rename(oldpath, newpath string) error {
 	return nil
 }
 
-func stackdebugf(f string, arg ...interface{}) {
+func stackdebugf(f string, arg ...any) {
 	debugfex(true, f, arg...)
 }
 
-func debugf(f string, arg ...interface{}) {
+func debugf(f string, arg ...any) {
 	debugfex(false, f, arg...)
 }
 
-func debugerr(err error, f string, arg ...interface{}) {
+func debugerr(err error, f string, arg ...any) {
 	if !DEBUG {
 		return
 	}
@@ -267,15 +267,15 @@ func debugerr(err error, f string, arg ...interface{}) {
 	}
 }
 
-func debugfex(stack bool, f string, arg ...interface{}) {
+func debugfex(stack bool, f string, arg ...any) {
 	if DEBUG {
 		line := fmt.Sprintf(f, arg...)
 		fmt.Printf("\n\n")
 		fmt.Printf("=============[screw]=============\n")
 		fmt.Printf("%s\n", line)
 		if stack {
-			stackLines := strings.Split(string(debug.Stack()), "\n")
-			for _, stackLine := range stackLines {
+			stackLines := strings.SplitSeq(string(debug.Stack()), "\n")
+			for stackLine := range stackLines {
 				fmt.Printf("     -> %s\n", stackLine)
 			}
 		}
